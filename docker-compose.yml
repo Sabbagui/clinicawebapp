@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: gynecology-practice-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: gynecology_practice
+      POSTGRES_HOST_AUTH_METHOD: md5
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Development container for backend
+  backend-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: gynecology-practice-backend
+    restart: unless-stopped
+    working_dir: /app/backend
+    command: npm run start:dev
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/gynecology_practice?schema=public
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+      PORT: 3001
+    ports:
+      - '3001:3001'
+    volumes:
+      - ./backend:/app/backend
+      - /app/backend/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Development container for frontend
+  frontend-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: gynecology-practice-frontend
+    restart: unless-stopped
+    working_dir: /app/frontend
+    command: npm run dev
+    environment:
+      NEXT_PUBLIC_API_URL: http://backend-dev:3001
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./frontend:/app/frontend
+      - /app/frontend/node_modules
+      - /app/frontend/.next
+    depends_on:
+      - backend-dev
+
+  # Opcional: PgAdmin para gerenciar o banco de dados
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: gynecology-practice-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - '5050:80'
+    depends_on:
+      - postgres
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+volumes:
+  postgres_data:
+  pgadmin_data:

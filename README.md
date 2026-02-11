@@ -1,0 +1,315 @@
+# Sistema de Gestão - Consultório de Ginecologia
+
+Sistema completo para gerenciamento de consultórios de ginecologia, incluindo agendamentos, prontuários eletrônicos, integração com WhatsApp e muito mais.
+
+## 🚀 Funcionalidades
+
+### Implementadas
+- ✅ Autenticação e autorização com JWT
+- ✅ Gestão de usuários (Admin, Médico, Enfermeira, Recepcionista)
+- ✅ Cadastro completo de pacientes
+- ✅ Sistema de prontuários eletrônicos (SOAP)
+- ✅ Estrutura para agendamentos
+- ✅ Controle de pagamentos (Dinheiro, PIX, Cartões)
+- ✅ API REST documentada com Swagger
+
+### Em Desenvolvimento
+- 🔄 Sistema completo de agendamentos
+- 🔄 Integração com WhatsApp Business API
+- 🔄 Interface frontend completa
+- 🔄 Lembretes automáticos de consultas
+- 🔄 Relatórios e análises
+
+## 📋 Pré-requisitos
+
+Antes de começar, você precisará ter instalado em sua máquina:
+
+- [Node.js](https://nodejs.org/) (v18 ou superior)
+- [PostgreSQL](https://www.postgresql.org/) (v14 ou superior)
+- [Git](https://git-scm.com/)
+
+## 🛠️ Instalação
+
+### 1. Instalar Node.js
+
+**Windows:**
+- Baixe o instalador em: https://nodejs.org/
+- Execute o instalador e siga as instruções
+- Reinicie o terminal após a instalação
+
+**Verificar instalação:**
+```bash
+node --version
+npm --version
+```
+
+### 2. Instalar PostgreSQL
+
+**Windows:**
+- Baixe em: https://www.postgresql.org/download/windows/
+- Execute o instalador
+- Anote a senha do usuário postgres
+- Mantenha a porta padrão (5432)
+
+### 3. Clonar e Configurar o Projeto
+
+```bash
+# Navegar até o diretório do projeto
+cd C:\Users\sabba\gynecology-practice-app
+
+# Instalar dependências do projeto raiz
+npm install
+
+# Instalar dependências do frontend
+cd frontend
+npm install
+
+# Instalar dependências do backend
+cd ../backend
+npm install
+```
+
+### 4. Configurar Banco de Dados
+
+```bash
+# Criar o banco de dados PostgreSQL
+# Abra o pgAdmin ou execute via terminal:
+createdb gynecology_practice
+```
+
+### 5. Configurar Variáveis de Ambiente
+
+**Backend:**
+```bash
+cd backend
+copy .env.example .env
+```
+
+Edite o arquivo `.env` e configure:
+```env
+DATABASE_URL="postgresql://postgres:SUA_SENHA@localhost:5432/gynecology_practice?schema=public"
+JWT_SECRET=altere-para-uma-chave-secreta-segura
+PORT=3001
+CORS_ORIGIN=http://localhost:3000
+```
+
+**Frontend:**
+```bash
+cd ../frontend
+copy .env.local.example .env.local
+```
+
+Edite o arquivo `.env.local`:
+```env
+NEXT_PUBLIC_API_URL=http://localhost:3001
+```
+
+### 6. Executar Migrações do Banco de Dados
+
+```bash
+cd backend
+npx prisma generate
+npx prisma migrate dev --name init
+```
+
+### 7. Criar Usuário Administrador (Seed)
+
+Crie um script de seed ou use o Prisma Studio:
+
+```bash
+npx prisma studio
+```
+
+No Prisma Studio, adicione um usuário admin:
+- email: admin@example.com
+- password: (será necessário hashear - veja abaixo)
+- name: Administrador
+- role: ADMIN
+
+**Para gerar a senha hasheada, execute no Node.js:**
+```javascript
+const bcrypt = require('bcrypt');
+bcrypt.hash('sua-senha', 10).then(console.log);
+```
+
+## 🚀 Executando a Aplicação
+
+### Modo Desenvolvimento
+
+**Opção 1: Executar tudo de uma vez (do diretório raiz):**
+```bash
+npm run dev
+```
+
+**Opção 2: Executar separadamente:**
+
+Terminal 1 - Backend:
+```bash
+cd backend
+npm run start:dev
+```
+
+Terminal 2 - Frontend:
+```bash
+cd frontend
+npm run dev
+```
+
+A aplicação estará disponível em:
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:3001/api
+- Swagger Docs: http://localhost:3001/api/docs
+
+## 📚 Documentação da API
+
+Acesse a documentação interativa Swagger em:
+```
+http://localhost:3001/api/docs
+```
+
+### Endpoints Principais
+
+#### Autenticação
+- `POST /api/auth/login` - Login
+- `POST /api/auth/me` - Informações do usuário atual
+
+#### Usuários
+- `GET /api/users` - Listar usuários
+- `POST /api/users` - Criar usuário (Admin)
+- `GET /api/users/:id` - Obter usuário
+- `DELETE /api/users/:id` - Deletar usuário (Admin)
+
+#### Pacientes
+- `GET /api/patients` - Listar pacientes
+- `POST /api/patients` - Cadastrar paciente
+- `GET /api/patients/:id` - Obter paciente com histórico
+- `PATCH /api/patients/:id` - Atualizar paciente
+- `DELETE /api/patients/:id` - Deletar paciente
+
+## 🏗️ Estrutura do Projeto
+
+```
+gynecology-practice-app/
+├── frontend/                 # Aplicação Next.js
+│   ├── src/
+│   │   ├── app/             # Pages (App Router)
+│   │   ├── components/      # Componentes React
+│   │   ├── lib/            # Utilitários
+│   │   └── types/          # TypeScript types
+│   └── public/             # Arquivos estáticos
+│
+├── backend/                 # API NestJS
+│   ├── src/
+│   │   ├── modules/        # Módulos da aplicação
+│   │   │   ├── auth/       # Autenticação
+│   │   │   ├── users/      # Usuários
+│   │   │   ├── patients/   # Pacientes
+│   │   │   ├── appointments/    # Agendamentos
+│   │   │   └── medical-records/ # Prontuários
+│   │   ├── common/         # Código compartilhado
+│   │   │   └── prisma/     # Prisma service
+│   │   └── config/         # Configurações
+│   └── prisma/
+│       └── schema.prisma   # Schema do banco de dados
+│
+└── package.json            # Workspace root
+```
+
+## 🔒 Segurança e Conformidade
+
+O sistema foi desenvolvido considerando:
+
+- ✅ **LGPD (Lei Geral de Proteção de Dados)** - Brasil
+- ✅ Criptografia de senhas com bcrypt
+- ✅ Autenticação JWT
+- ✅ Controle de acesso baseado em roles
+- ✅ Validação de dados de entrada
+- ✅ Proteção contra SQL Injection (Prisma ORM)
+
+### Recomendações de Produção
+- Usar HTTPS
+- Configurar rate limiting
+- Implementar logs de auditoria
+- Backup automático do banco de dados
+- Configurar firewall
+- Manter dependências atualizadas
+
+## 🧪 Testes
+
+```bash
+# Backend
+cd backend
+npm run test
+
+# Frontend
+cd frontend
+npm run test
+```
+
+## 📦 Build para Produção
+
+```bash
+# Build completo
+npm run build
+
+# Executar em produção
+cd backend
+npm run start:prod
+
+cd frontend
+npm run start
+```
+
+## 🔧 Tecnologias Utilizadas
+
+### Frontend
+- Next.js 14
+- React 18
+- TypeScript
+- Tailwind CSS
+- Zustand (State Management)
+- React Hook Form
+- Zod (Validation)
+
+### Backend
+- NestJS
+- TypeScript
+- Prisma ORM
+- PostgreSQL
+- JWT Authentication
+- Swagger/OpenAPI
+- Bcrypt
+
+## 🤝 Contribuindo
+
+Este é um projeto privado. Para sugestões ou melhorias, entre em contato com a equipe.
+
+## 📞 Próximos Passos
+
+1. **Implementar Agendamentos Completos**
+   - Calendário interativo
+   - Conflitos de horário
+   - Tipos de consulta
+
+2. **Integração WhatsApp**
+   - WhatsApp Business API
+   - Lembretes automáticos
+   - Confirmações de consulta
+
+3. **Dashboard e Relatórios**
+   - Estatísticas do consultório
+   - Gráficos de atendimento
+   - Exportação de relatórios
+
+4. **Melhorias na Interface**
+   - Design system completo
+   - Modo escuro
+   - Acessibilidade
+
+## 📄 Licença
+
+Propriedade privada. Todos os direitos reservados.
+
+---
+
+**Desenvolvido para gestão eficiente de consultórios ginecológicos** 🏥

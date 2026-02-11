@@ -1,0 +1,29 @@
+# Development container for the full application
+FROM node:20
+
+# Bash and curl are already included in the full Node image
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY backend/package*.json ./backend/
+COPY frontend/package*.json ./frontend/
+
+# Install dependencies
+RUN npm install
+RUN cd backend && npm install
+RUN cd frontend && npm install
+
+# Copy the rest of the application
+COPY . .
+
+# Generate Prisma client
+RUN cd backend && npx prisma generate
+
+# Expose ports
+EXPOSE 3000 3001
+
+# Default command (can be overridden)
+CMD ["bash"]
