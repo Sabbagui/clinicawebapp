@@ -24,6 +24,11 @@ enum AppointmentStatus {
   NO_SHOW
 }
 
+enum MedicalRecordStatus {
+  DRAFT
+  FINAL
+}
+
 enum PaymentMethod {
   CASH
   PIX
@@ -46,11 +51,13 @@ model User {
   name      String
   role      UserRole @default(RECEPTIONIST)
   isActive  Boolean  @default(true)
+  deletedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  appointments    Appointment[]
-  medicalRecords  MedicalRecord[]
+  appointments       Appointment[]
+  medicalRecords     MedicalRecord[]
+  finalizedRecords   MedicalRecord[] @relation("FinalizedRecords")
 
   @@map("users")
 }
@@ -77,6 +84,10 @@ model Patient {
   emergencyContactName         String?
   emergencyContactRelationship String?
   emergencyContactPhone        String?
+
+  // Soft delete
+  isActive  Boolean   @default(true)
+  deletedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -109,26 +120,26 @@ model Appointment {
 }
 
 model MedicalRecord {
-  id            String   @id @default(uuid())
+  id            String              @id @default(uuid())
   patientId     String
-  patient       Patient  @relation(fields: [patientId], references: [id])
-  appointmentId String?  @unique
-  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+  patient       Patient             @relation(fields: [patientId], references: [id])
+  appointmentId String              @unique
+  appointment   Appointment         @relation(fields: [appointmentId], references: [id])
   doctorId      String
-  doctor        User     @relation(fields: [doctorId], references: [id])
-  date          DateTime @default(now())
+  doctor        User                @relation(fields: [doctorId], references: [id])
+  date          DateTime            @default(now())
 
   // SOAP Notes
-  chiefComplaint           String // Queixa principal
-  historyOfPresentIllness  String // História da doença atual
-  physicalExamination      String // Exame físico
-  diagnosis                String // Diagnóstico
-  treatment                String // Tratamento
+  subjective  String // Subjetivo: queixa principal, HDA
+  objective   String // Objetivo: exame físico, sinais vitais
+  assessment  String // Avaliação: diagnóstico, hipóteses
+  plan        String // Plano: tratamento, prescrições, orientações
 
-  // Additional data (JSON)
-  prescriptions Json? // Array of prescriptions
-  labOrders     Json? // Array of lab orders
-  notes         String?
+  // Finalization
+  status        MedicalRecordStatus @default(DRAFT)
+  finalizedAt   DateTime?
+  finalizedById String?
+  finalizedBy   User?               @relation("FinalizedRecords", fields: [finalizedById], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/common/prisma/prisma.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
@@ -15,12 +15,13 @@ export class PatientsService {
 
   findAll() {
     return this.prisma.patient.findMany({
+      where: { isActive: true },
       orderBy: { name: 'asc' },
     });
   }
 
-  findOne(id: string) {
-    return this.prisma.patient.findUnique({
+  async findOne(id: string) {
+    const patient = await this.prisma.patient.findUnique({
       where: { id },
       include: {
         appointments: {
@@ -41,6 +42,12 @@ export class PatientsService {
         },
       },
     });
+
+    if (!patient) {
+      throw new NotFoundException('Paciente não encontrado');
+    }
+
+    return patient;
   }
 
   findByCpf(cpf: string) {
@@ -56,9 +63,13 @@ export class PatientsService {
     });
   }
 
-  remove(id: string) {
-    return this.prisma.patient.delete({
+  async remove(id: string) {
+    return this.prisma.patient.update({
       where: { id },
+      data: {
+        isActive: false,
+        deletedAt: new Date(),
+      },
     });
   }
 }

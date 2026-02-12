@@ -14,16 +14,20 @@ import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
 import { UpdateAppointmentStatusDto } from './dto/update-status.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 
 @ApiTags('Appointments')
 @Controller('appointments')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class AppointmentsController {
   constructor(private readonly appointmentsService: AppointmentsService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create a new appointment' })
+  @Roles(UserRole.ADMIN, UserRole.RECEPTIONIST)
+  @ApiOperation({ summary: 'Create a new appointment (Admin, Receptionist)' })
   create(@Body() dto: CreateAppointmentDto) {
     return this.appointmentsService.create(dto);
   }
@@ -48,14 +52,37 @@ export class AppointmentsController {
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update appointment details' })
+  @Roles(UserRole.ADMIN, UserRole.RECEPTIONIST)
+  @ApiOperation({ summary: 'Update appointment details (Admin, Receptionist)' })
   update(@Param('id') id: string, @Body() dto: UpdateAppointmentDto) {
     return this.appointmentsService.update(id, dto);
   }
 
   @Patch(':id/status')
-  @ApiOperation({ summary: 'Update appointment status' })
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE)
+  @ApiOperation({ summary: 'Update appointment status (Admin, Doctor, Nurse)' })
   updateStatus(@Param('id') id: string, @Body() dto: UpdateAppointmentStatusDto) {
     return this.appointmentsService.updateStatus(id, dto.status);
+  }
+
+  @Post(':id/start')
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE)
+  @ApiOperation({ summary: 'Start encounter - transition to IN_PROGRESS (Doctor, Nurse, Admin)' })
+  startEncounter(@Param('id') id: string) {
+    return this.appointmentsService.startEncounter(id);
+  }
+
+  @Post(':id/complete')
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE)
+  @ApiOperation({ summary: 'Complete encounter - requires finalized medical record (Doctor, Nurse, Admin)' })
+  completeEncounter(@Param('id') id: string) {
+    return this.appointmentsService.completeEncounter(id);
+  }
+
+  @Get(':id/medical-record')
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE)
+  @ApiOperation({ summary: 'Get medical record for appointment (Doctor, Nurse, Admin)' })
+  findMedicalRecord(@Param('id') id: string) {
+    return this.appointmentsService.findMedicalRecord(id);
   }
 }
