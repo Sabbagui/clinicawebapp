@@ -73,41 +73,30 @@ export interface Appointment {
 }
 
 // Medical Record
+export enum MedicalRecordStatus {
+  DRAFT = 'DRAFT',
+  FINAL = 'FINAL',
+}
+
 export interface MedicalRecord {
   id: string;
   patientId: string;
-  patient?: Patient;
-  appointmentId?: string;
+  patient?: { id: string; name: string };
+  appointmentId: string;
+  appointment?: { id: string; scheduledDate: string; type: string; status: string };
   doctorId: string;
-  doctor?: User;
-  date: Date;
-  chiefComplaint: string;
-  historyOfPresentIllness: string;
-  physicalExamination: string;
-  diagnosis: string;
-  treatment: string;
-  prescriptions?: Prescription[];
-  labOrders?: LabOrder[];
-  notes?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface Prescription {
-  id: string;
-  medication: string;
-  dosage: string;
-  frequency: string;
-  duration: string;
-  instructions?: string;
-}
-
-export interface LabOrder {
-  id: string;
-  testName: string;
-  notes?: string;
-  result?: string;
-  resultDate?: Date;
+  doctor?: { id: string; name: string };
+  date: string;
+  subjective: string;
+  objective: string;
+  assessment: string;
+  plan: string;
+  status: MedicalRecordStatus;
+  finalizedAt?: string;
+  finalizedById?: string;
+  finalizedBy?: { id: string; name: string };
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Payments

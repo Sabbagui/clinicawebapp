@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert } from '@/components/ui/alert';
 import { AppointmentStatusBadge } from '@/components/appointments/appointment-status-badge';
 import { AppointmentStatusActions } from '@/components/appointments/appointment-status-actions';
+import { EncounterSection } from '@/components/appointments/encounter-section';
 import { formatDate, formatTime, formatPhone } from '@/lib/utils';
 import { ArrowLeft, Pencil, Clock, User, Stethoscope, FileText } from 'lucide-react';
 
@@ -154,6 +155,9 @@ export default function AppointmentDetailPage({ params }: { params: { id: string
           </div>
         )}
       </div>
+
+      {/* Encounter / SOAP Medical Record */}
+      <EncounterSection appointment={currentAppointment} />
 
       {/* Status Actions */}
       <div className="p-6 border rounded-lg bg-card shadow-sm">
