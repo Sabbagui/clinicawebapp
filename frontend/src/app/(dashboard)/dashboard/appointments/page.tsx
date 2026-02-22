@@ -10,7 +10,7 @@ import { AppointmentDayView } from '@/components/appointments/appointment-day-vi
 import { AppointmentListView } from '@/components/appointments/appointment-list-view';
 import { EmptyAppointmentsState } from '@/components/appointments/empty-appointments-state';
 import { Plus, ChevronLeft, ChevronRight, Calendar, List } from 'lucide-react';
-import { formatDate } from '@/lib/utils';
+import { formatDate, clinicDayRange } from '@/lib/utils';
 
 export default function AppointmentsPage() {
   const router = useRouter();
@@ -19,11 +19,8 @@ export default function AppointmentsPage() {
   const [viewMode, setViewMode] = useState<'day' | 'list'>('day');
 
   const loadAppointments = useCallback(() => {
-    const start = new Date(selectedDate);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(selectedDate);
-    end.setHours(23, 59, 59, 999);
-    fetchAppointments(start.toISOString(), end.toISOString());
+    const { start, end } = clinicDayRange(selectedDate);
+    fetchAppointments(start, end);
   }, [selectedDate, fetchAppointments]);
 
   useEffect(() => {

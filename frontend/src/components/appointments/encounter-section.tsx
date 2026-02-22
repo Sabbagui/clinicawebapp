@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAppointmentStore } from '@/lib/stores/appointment-store';
+import { getApiErrorMessage, isForbiddenError } from '@/lib/api/error-utils';
 import {
   startEncounter,
   completeAppointment,
@@ -50,11 +52,13 @@ const SOAP_LABELS: Record<string, { label: string; placeholder: string }> = {
 };
 
 export function EncounterSection({ appointment }: EncounterSectionProps) {
+  const router = useRouter();
   const { fetchAppointment } = useAppointmentStore();
 
   const [record, setRecord] = useState<MedicalRecord | null>(null);
   const [recordLoading, setRecordLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isForbidden, setIsForbidden] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   // SOAP form fields
@@ -82,14 +86,16 @@ export function EncounterSection({ appointment }: EncounterSectionProps) {
     try {
       const data = await getAppointmentMedicalRecord(appointment.id);
       setRecord(data);
+      setIsForbidden(false);
       if (data) {
         setSubjective(data.subjective);
         setObjective(data.objective);
         setAssessment(data.assessment);
         setPlan(data.plan);
       }
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Erro ao carregar prontuário');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Erro ao carregar prontuário'));
+      setIsForbidden(isForbiddenError(err));
     } finally {
       setRecordLoading(false);
     }
@@ -101,6 +107,7 @@ export function EncounterSection({ appointment }: EncounterSectionProps) {
 
   const clearMessages = () => {
     setError(null);
+    setIsForbidden(false);
     setSuccessMsg(null);
   };
 
@@ -112,8 +119,9 @@ export function EncounterSection({ appointment }: EncounterSectionProps) {
     try {
       await startEncounter(appointment.id);
       await fetchAppointment(appointment.id);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Erro ao iniciar atendimento');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Erro ao iniciar atendimento'));
+      setIsForbidden(isForbiddenError(err));
     } finally {
       setStartState('idle');
     }
@@ -147,8 +155,9 @@ export function EncounterSection({ appointment }: EncounterSectionProps) {
         setRecord(created);
         setSuccessMsg('Prontuário criado com sucesso');
       }
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Erro ao salvar prontuário');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Erro ao salvar prontuário'));
+      setIsForbidden(isForbiddenError(err));
     } finally {
       setSaveState('idle');
     }
@@ -162,8 +171,9 @@ export function EncounterSection({ appointment }: EncounterSectionProps) {
       const updated = await finalizeMedicalRecord(record.id);
       setRecord(updated);
       setSuccessMsg('Prontuário finalizado com sucesso');
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Erro ao finalizar prontuário');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Erro ao finalizar prontuário'));
+      setIsForbidden(isForbiddenError(err));
     } finally {
       setFinalizeState('idle');
     }
@@ -176,8 +186,9 @@ export function EncounterSection({ appointment }: EncounterSectionProps) {
       await completeAppointment(appointment.id);
       await fetchAppointment(appointment.id);
       setSuccessMsg('Atendimento concluído com sucesso');
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Erro ao concluir atendimento');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Erro ao concluir atendimento'));
+      setIsForbidden(isForbiddenError(err));
     } finally {
       setCompleteState('idle');
     }
@@ -227,6 +238,17 @@ export function EncounterSection({ appointment }: EncounterSectionProps) {
         <Skeleton className="h-6 w-48" />
         <Skeleton className="h-32 w-full" />
         <Skeleton className="h-32 w-full" />
+      </div>
+    );
+  }
+
+  if (isForbidden) {
+    return (
+      <div className="p-6 border rounded-lg bg-card shadow-sm space-y-3">
+        <Alert variant="destructive">{error || 'Sem permissão para acessar este recurso.'}</Alert>
+        <Button variant="outline" onClick={() => router.back()}>
+          Voltar
+        </Button>
       </div>
     );
   }

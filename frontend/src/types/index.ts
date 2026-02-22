@@ -101,11 +101,11 @@ export interface MedicalRecord {
 
 // Payments
 export enum PaymentMethod {
-  CASH = 'CASH',
   PIX = 'PIX',
+  CASH = 'CASH',
   CREDIT_CARD = 'CREDIT_CARD',
   DEBIT_CARD = 'DEBIT_CARD',
-  HEALTH_INSURANCE = 'HEALTH_INSURANCE',
+  BANK_TRANSFER = 'BANK_TRANSFER',
 }
 
 export enum PaymentStatus {
@@ -118,10 +118,12 @@ export enum PaymentStatus {
 export interface Payment {
   id: string;
   appointmentId: string;
-  amount: number;
+  amount: number; // in cents
   method: PaymentMethod;
   status: PaymentStatus;
-  paidAt?: Date;
-  createdAt: Date;
-  updatedAt: Date;
+  paidAt?: string;
+  refundedAt?: string;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }

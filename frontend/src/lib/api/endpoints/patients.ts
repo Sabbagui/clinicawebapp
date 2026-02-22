@@ -1,7 +1,57 @@
 import apiClient from '../client';
-import type { Patient } from '@/types';
+import type { Patient, AppointmentStatus } from '@/types';
 import type { PatientFormData } from '@/lib/validation/patient-schema';
 import { stripFormatting } from '@/lib/utils';
+
+// Patient History types
+export interface PatientHistoryStats {
+  lastVisitAt: string | null;
+  nextAppointmentAt: string | null;
+  completedCount: number;
+  noShowCount: number;
+  cancelledCount: number;
+}
+
+export interface TimelineMedicalRecord {
+  id: string;
+  status: 'DRAFT' | 'FINAL';
+  finalizedAt: string | null;
+  subjectivePreview: string | null;
+  assessmentPreview: string | null;
+  planPreview: string | null;
+}
+
+export interface TimelinePayment {
+  id: string;
+  status: string;
+  amount: number;
+  method: string;
+  paidAt: string | null;
+}
+
+export interface TimelineEntry {
+  appointmentId: string;
+  scheduledDate: string;
+  duration: number;
+  type: string;
+  status: string;
+  notes: string | null;
+  doctor: { id: string; name: string };
+  medicalRecord: TimelineMedicalRecord | null;
+  payment: TimelinePayment | null;
+}
+
+export interface PatientHistoryResponse {
+  patient: {
+    id: string;
+    name: string;
+    birthDate: string;
+    phone: string;
+    email: string | null;
+  };
+  stats: PatientHistoryStats;
+  timeline: TimelineEntry[];
+}
 
 // Backend API response structure (flat fields)
 interface PatientAPIResponse {
@@ -95,7 +145,7 @@ function transformFormToAPI(form: PatientFormData): PatientAPIRequest {
   return {
     name: form.name,
     cpf: stripFormatting(form.cpf), // Remove dots and dashes
-    birthDate: `${form.birthDate}T00:00:00.000Z`, // Convert to ISO-8601 DateTime
+    birthDate: `${form.birthDate}T12:00:00.000Z`, // noon UTC avoids UTC-3 day rollback
     phone: stripFormatting(form.phone), // Remove parentheses, spaces, dashes
     whatsapp: form.whatsapp ? stripFormatting(form.whatsapp) : undefined,
     email: form.email || undefined, // Convert empty string to undefined
@@ -170,4 +220,23 @@ export const updatePatient = async (
  */
 export const deletePatient = async (id: string): Promise<void> => {
   await apiClient.delete(`/api/patients/${id}`);
+};
+
+/**
+ * Get patient history timeline
+ * @param id Patient ID (UUID)
+ * @param options Optional filters (limit, status)
+ */
+export const getPatientHistory = async (
+  id: string,
+  options?: { limit?: number; status?: AppointmentStatus },
+): Promise<PatientHistoryResponse> => {
+  const params = new URLSearchParams();
+  if (options?.limit) params.set('limit', String(options.limit));
+  if (options?.status) params.set('status', options.status);
+  const query = params.toString();
+  const response = await apiClient.get<PatientHistoryResponse>(
+    `/api/patients/${id}/history${query ? `?${query}` : ''}`,
+  );
+  return response.data;
 };
