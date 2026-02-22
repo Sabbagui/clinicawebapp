@@ -24,6 +24,11 @@ enum AppointmentStatus {
   NO_SHOW
 }
 
+enum MedicalRecordStatus {
+  DRAFT
+  FINAL
+}
+
 enum PaymentMethod {
   PIX
   CASH
@@ -51,12 +56,13 @@ model User {
   name      String
   role      UserRole @default(RECEPTIONIST)
   isActive  Boolean  @default(true)
+  deletedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   appointments       Appointment[]
   medicalRecords     MedicalRecord[]
-  finalizedRecords   MedicalRecord[]   @relation("FinalizedRecords")
+  finalizedRecords   MedicalRecord[] @relation("FinalizedRecords")
 
   @@map("users")
 }
@@ -83,6 +89,10 @@ model Patient {
   emergencyContactName         String?
   emergencyContactRelationship String?
   emergencyContactPhone        String?
+
+  // Soft delete
+  isActive  Boolean   @default(true)
+  deletedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -121,8 +131,8 @@ model MedicalRecord {
   id            String              @id @default(uuid())
   patientId     String
   patient       Patient             @relation(fields: [patientId], references: [id])
-  appointmentId String?             @unique
-  appointment   Appointment?        @relation(fields: [appointmentId], references: [id])
+  appointmentId String              @unique
+  appointment   Appointment         @relation(fields: [appointmentId], references: [id])
   doctorId      String
   doctor        User                @relation(fields: [doctorId], references: [id])
   date          DateTime            @default(now())

@@ -35,6 +35,11 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
   IN_PROGRESS: ['COMPLETED'],
 };
 
+type PrismaTransaction = Omit<
+  PrismaClient,
+  '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
+>;
+
 @Injectable()
 export class AppointmentsService {
   constructor(private prisma: PrismaService) {}
@@ -44,11 +49,12 @@ export class AppointmentsService {
     scheduledDate: Date,
     duration: number,
     excludeId?: string,
+    tx: PrismaTransaction = this.prisma,
   ) {
     const saoPauloDay = toSaoPauloYYYYMMDD(scheduledDate);
     const { startUtc, endUtc } = getSaoPauloDayRange(saoPauloDay);
 
-    const existingAppointments = await this.prisma.appointment.findMany({
+    const existingAppointments = await tx.appointment.findMany({
       where: {
         doctorId,
         scheduledDate: { gte: startUtc, lt: endUtc },
@@ -76,19 +82,31 @@ export class AppointmentsService {
     const scheduledDate = new Date(dto.scheduledDate);
     const duration = dto.duration || 30;
 
-    await this.assertNoConflict(dto.doctorId, scheduledDate, duration);
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        await this.assertNoConflict(dto.doctorId, scheduledDate, duration, undefined, tx);
 
-    return this.prisma.appointment.create({
-      data: {
-        patientId: dto.patientId,
-        doctorId: dto.doctorId,
-        scheduledDate,
-        duration,
-        type: dto.type,
-        notes: dto.notes,
-      },
-      include: INCLUDE_RELATIONS,
-    });
+        return tx.appointment.create({
+          data: {
+            patientId: dto.patientId,
+            doctorId: dto.doctorId,
+            scheduledDate,
+            duration,
+            type: dto.type,
+            notes: dto.notes,
+          },
+          include: INCLUDE_RELATIONS,
+        });
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    } catch (error) {
+      if (error instanceof ConflictException) throw error;
+      if (error.code === 'P2034') {
+        throw new ConflictException(
+          'Conflito de horário: tente novamente',
+        );
+      }
+      throw error;
+    }
   }
 
   async findAll(startDate?: string, endDate?: string, doctorId?: string) {
@@ -239,18 +257,40 @@ export class AppointmentsService {
     const duration = dto.duration ?? existing.duration;
     const doctorId = dto.doctorId ?? existing.doctorId;
 
-    // Re-check conflict if date, duration, or doctor changed
     if (dto.scheduledDate || dto.duration || dto.doctorId) {
-      await this.assertNoConflict(doctorId, scheduledDate, duration, id);
+      try {
+        return await this.prisma.$transaction(async (tx) => {
+          await this.assertNoConflict(doctorId, scheduledDate, duration, id, tx);
+
+          return tx.appointment.update({
+            where: { id },
+            data: {
+              ...(dto.patientId && { patientId: dto.patientId }),
+              ...(dto.doctorId && { doctorId: dto.doctorId }),
+              ...(dto.scheduledDate && { scheduledDate }),
+              ...(dto.duration && { duration }),
+              ...(dto.type && { type: dto.type }),
+              ...(dto.notes !== undefined && { notes: dto.notes }),
+            },
+            include: INCLUDE_RELATIONS,
+          });
+        }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+      } catch (error) {
+        if (error instanceof ConflictException) throw error;
+        if (error instanceof NotFoundException) throw error;
+        if (error.code === 'P2034') {
+          throw new ConflictException(
+            'Conflito de horário: tente novamente',
+          );
+        }
+        throw error;
+      }
     }
 
     return this.prisma.appointment.update({
       where: { id },
       data: {
         ...(dto.patientId && { patientId: dto.patientId }),
-        ...(dto.doctorId && { doctorId: dto.doctorId }),
-        ...(dto.scheduledDate && { scheduledDate }),
-        ...(dto.duration && { duration }),
         ...(dto.type && { type: dto.type }),
         ...(dto.notes !== undefined && { notes: dto.notes }),
       },
@@ -275,6 +315,49 @@ export class AppointmentsService {
       where: { id },
       data: { status: newStatus },
       include: INCLUDE_RELATIONS,
+    });
+  }
+
+  async startEncounter(id: string) {
+    return this.updateStatus(id, AppointmentStatus.IN_PROGRESS);
+  }
+
+  async completeEncounter(id: string) {
+    const appointment = await this.prisma.appointment.findUnique({
+      where: { id },
+      include: { medicalRecord: true },
+    });
+
+    if (!appointment) {
+      throw new NotFoundException('Agendamento não encontrado');
+    }
+
+    if (!appointment.medicalRecord || appointment.medicalRecord.status !== 'FINAL') {
+      throw new BadRequestException(
+        'Finalize o prontuário antes de concluir o atendimento',
+      );
+    }
+
+    return this.updateStatus(id, AppointmentStatus.COMPLETED);
+  }
+
+  async findMedicalRecord(appointmentId: string) {
+    const appointment = await this.prisma.appointment.findUnique({
+      where: { id: appointmentId },
+    });
+
+    if (!appointment) {
+      throw new NotFoundException('Agendamento não encontrado');
+    }
+
+    return this.prisma.medicalRecord.findUnique({
+      where: { appointmentId },
+      include: {
+        patient: { select: { id: true, name: true } },
+        doctor: { select: { id: true, name: true } },
+        finalizedBy: { select: { id: true, name: true } },
+        appointment: { select: { id: true, scheduledDate: true, type: true, status: true } },
+      },
     });
   }
 }

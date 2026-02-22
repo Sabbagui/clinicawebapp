@@ -1,3 +1,8 @@
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
 ﻿import {
   Injectable,
   NotFoundException,
@@ -8,18 +13,12 @@
 import { PrismaService } from '@/common/prisma/prisma.service';
 import { CreateMedicalRecordDto } from './dto/create-medical-record.dto';
 import { UpdateMedicalRecordDto } from './dto/update-medical-record.dto';
-import { MedicalRecordStatus } from '@prisma/client';
-import {
-  ACCESS_FORBIDDEN_MESSAGE,
-  assertMedicalRecordAccess,
-  isClinician,
-  isReceptionist,
-  type AccessUser,
-} from '@/common/auth/access';
 
 const INCLUDE_RELATIONS = {
   patient: { select: { id: true, name: true } },
   doctor: { select: { id: true, name: true } },
+  finalizedBy: { select: { id: true, name: true } },
+  appointment: { select: { id: true, scheduledDate: true, type: true, status: true } },
   appointment: {
     select: { id: true, scheduledDate: true, type: true, status: true, doctorId: true },
   },
@@ -30,6 +29,31 @@ const INCLUDE_RELATIONS = {
 export class MedicalRecordsService {
   constructor(private prisma: PrismaService) {}
 
+  async create(dto: CreateMedicalRecordDto, requestingUser: { id: string; role: string }) {
+    const appointment = await this.prisma.appointment.findUnique({
+      where: { id: dto.appointmentId },
+    });
+
+    if (!appointment) {
+      throw new NotFoundException('Agendamento não encontrado');
+    }
+
+    if (!['IN_PROGRESS', 'COMPLETED'].includes(appointment.status)) {
+      throw new BadRequestException(
+        'Prontuário só pode ser criado para agendamentos em andamento ou concluídos',
+      );
+    }
+
+    if (appointment.patientId !== dto.patientId) {
+      throw new BadRequestException(
+        'patientId não corresponde ao paciente do agendamento',
+      );
+    }
+
+    if (requestingUser.role !== 'ADMIN' && appointment.doctorId !== dto.doctorId) {
+      throw new BadRequestException(
+        'doctorId não corresponde ao médico do agendamento',
+      );
   async create(dto: CreateMedicalRecordDto, user: AccessUser) {
     if (isReceptionist(user)) {
       throw new ForbiddenException(ACCESS_FORBIDDEN_MESSAGE);
@@ -49,8 +73,11 @@ export class MedicalRecordsService {
     const existing = await this.prisma.medicalRecord.findUnique({
       where: { appointmentId: dto.appointmentId },
     });
+
     if (existing) {
-      throw new ConflictException('Este agendamento ja possui um prontuario');
+      throw new ConflictException(
+        'Já existe um prontuário para este agendamento',
+      );
     }
 
     return this.prisma.medicalRecord.create({
@@ -75,6 +102,32 @@ export class MedicalRecordsService {
     });
 
     if (!record) {
+      throw new NotFoundException('Prontuário não encontrado');
+    }
+
+    return record;
+  }
+
+  async findByAppointmentId(appointmentId: string) {
+    return this.prisma.medicalRecord.findUnique({
+      where: { appointmentId },
+      include: INCLUDE_RELATIONS,
+    });
+  }
+
+  async update(id: string, dto: UpdateMedicalRecordDto) {
+    const record = await this.prisma.medicalRecord.findUnique({
+      where: { id },
+    });
+
+    if (!record) {
+      throw new NotFoundException('Prontuário não encontrado');
+    }
+
+    if (record.status === 'FINAL') {
+      throw new ConflictException(
+        'Prontuário finalizado não pode ser alterado',
+      );
       return null;
     }
 
@@ -138,6 +191,9 @@ export class MedicalRecordsService {
     return this.prisma.medicalRecord.update({
       where: { id },
       data: {
+        status: 'FINAL',
+        finalizedAt: new Date(),
+        finalizedById: userId,
         status: MedicalRecordStatus.FINAL,
         finalizedAt: new Date(),
         finalizedById: user.id,

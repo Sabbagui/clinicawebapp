@@ -17,6 +17,7 @@ import { UpdatePatientDto } from './dto/update-patient.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '@prisma/client';
 import { UserRole, AppointmentStatus, Prisma } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { getRequestAuditMeta } from '@/common/audit/request-audit-meta';
@@ -28,7 +29,7 @@ import {
 
 @ApiTags('Patients')
 @Controller('patients')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class PatientsController {
   constructor(
@@ -37,6 +38,16 @@ export class PatientsController {
   ) {}
 
   @Post()
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.RECEPTIONIST)
+  @ApiOperation({ summary: 'Register a new patient (Admin, Doctor, Receptionist)' })
+  create(@Body() createPatientDto: CreatePatientDto) {
+    return this.patientsService.create(createPatientDto);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Get all active patients' })
+  findAll() {
+    return this.patientsService.findAll();
   @ApiOperation({ summary: 'Register a new patient' })
   async create(@Body() createPatientDto: CreatePatientDto, @Request() req) {
     const patient = await this.patientsService.create(createPatientDto);
@@ -104,6 +115,17 @@ export class PatientsController {
   }
 
   @Patch(':id')
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.RECEPTIONIST)
+  @ApiOperation({ summary: 'Update patient information (Admin, Doctor, Receptionist)' })
+  update(@Param('id') id: string, @Body() updatePatientDto: UpdatePatientDto) {
+    return this.patientsService.update(id, updatePatientDto);
+  }
+
+  @Delete(':id')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Deactivate patient (Admin only)' })
+  remove(@Param('id') id: string) {
+    return this.patientsService.remove(id);
   @ApiOperation({ summary: 'Update patient information' })
   async update(
     @Param('id') id: string,

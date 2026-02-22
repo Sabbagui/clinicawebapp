@@ -24,7 +24,7 @@ export class UsersController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all users' })
+  @ApiOperation({ summary: 'Get all active users' })
   @ApiQuery({ name: 'role', required: false, enum: UserRole })
   findAll(@Query('role') role?: UserRole) {
     return this.usersService.findAll(role);
@@ -52,7 +52,7 @@ export class UsersController {
 
   @Delete(':id')
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: 'Delete user (Admin only)' })
+  @ApiOperation({ summary: 'Deactivate user (Admin only)' })
   remove(@Param('id') id: string) {
     return this.usersService.remove(id);
   }

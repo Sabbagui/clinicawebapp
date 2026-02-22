@@ -45,7 +45,7 @@ import {
 
 @ApiTags('Appointments')
 @Controller('appointments')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class AppointmentsController {
   constructor(
@@ -158,6 +158,31 @@ export class AppointmentsController {
   }
 
   @Patch(':id/status')
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE)
+  @ApiOperation({ summary: 'Update appointment status (Admin, Doctor, Nurse)' })
+  updateStatus(@Param('id') id: string, @Body() dto: UpdateAppointmentStatusDto) {
+    return this.appointmentsService.updateStatus(id, dto.status);
+  }
+
+  @Post(':id/start')
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE)
+  @ApiOperation({ summary: 'Start encounter - transition to IN_PROGRESS (Doctor, Nurse, Admin)' })
+  startEncounter(@Param('id') id: string) {
+    return this.appointmentsService.startEncounter(id);
+  }
+
+  @Post(':id/complete')
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE)
+  @ApiOperation({ summary: 'Complete encounter - requires finalized medical record (Doctor, Nurse, Admin)' })
+  completeEncounter(@Param('id') id: string) {
+    return this.appointmentsService.completeEncounter(id);
+  }
+
+  @Get(':id/medical-record')
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE)
+  @ApiOperation({ summary: 'Get medical record for appointment (Doctor, Nurse, Admin)' })
+  findMedicalRecord(@Param('id') id: string) {
+    return this.appointmentsService.findMedicalRecord(id);
   @ApiOperation({ summary: 'Update appointment status' })
   async updateStatus(@Param('id') id: string, @Body() dto: UpdateAppointmentStatusDto, @Request() req) {
     const appointment = await this.appointmentsService.findOne(id);
