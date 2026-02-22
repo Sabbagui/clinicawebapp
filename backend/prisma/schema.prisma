@@ -44,10 +44,6 @@ enum PaymentStatus {
   REFUNDED
 }
 
-enum MedicalRecordStatus {
-  DRAFT
-  FINAL
-}
 
 model User {
   id        String   @id @default(uuid())
