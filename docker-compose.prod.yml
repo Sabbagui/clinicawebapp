@@ -1,0 +1,114 @@
+version: '2.4'
+
+# Internal production stack (home server over Tailscale) - docker-compose v1 compatible
+#
+# Run (docker-compose v1):
+#   docker-compose -f docker-compose.prod.yml up -d --build
+# Stop:
+#   docker-compose -f docker-compose.prod.yml down
+#
+# If your docker-compose v1 supports --env-file, this also works:
+#   docker-compose -f docker-compose.prod.yml --env-file .env up -d --build
+# PgAdmin (optional, separate file because docker-compose v1 does not support profiles):
+#   docker-compose -f docker-compose.prod.yml -f docker-compose.prod.admin.v1.yml up -d pgadmin
+#
+# Port exposure rationale:
+# - Frontend is published only on the Tailscale IP (100.74.93.53), not on 0.0.0.0.
+# - Backend remains internal (not published): browser requests go to the frontend on /api and Next.js rewrites/proxies
+#   them to http://backend:3001 from inside the container network. This avoids exposing the API directly.
+# - Postgres is never published to the host.
+# - PgAdmin is intentionally excluded from this base file for v1 compatibility (profiles are not supported).
+#   Use docker-compose.prod.admin.v1.yml when you need it, and it binds only to 127.0.0.1.
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: gynecology-practice-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - internal
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: gynecology-practice-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+    expose:
+      - '3001'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "require('http').get('http://127.0.0.1:3001/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+      - edge
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://backend:3001}
+    container_name: gynecology-practice-frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://backend:3001}
+    ports:
+      - '100.74.93.53:${FRONTEND_PORT:-3000}:3000'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "require('http').get('http://127.0.0.1:3000',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))",
+        ]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - edge
+
+volumes:
+  postgres_data:
+
+networks:
+  internal:
+    driver: bridge
+    internal: true
+  edge:
+    driver: bridge

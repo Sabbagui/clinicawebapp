@@ -2,6 +2,7 @@
 
 import { TIME_SLOTS } from '@/lib/constants/appointment-constants';
 import { AppointmentCard } from './appointment-card';
+import { getClinicHoursMinutes } from '@/lib/utils';
 import type { Appointment } from '@/lib/api/endpoints/appointments';
 
 interface AppointmentDayViewProps {
@@ -9,16 +10,13 @@ interface AppointmentDayViewProps {
 }
 
 export function AppointmentDayView({ appointments }: AppointmentDayViewProps) {
-  // Group appointments by their time slot
+  // Group appointments by their time slot (clinic timezone)
   const getAppointmentsForSlot = (slot: string) => {
     const [slotHour, slotMinute] = slot.split(':').map(Number);
 
     return appointments.filter((appt) => {
-      const date = new Date(appt.scheduledDate);
-      const apptHour = date.getHours();
-      const apptMinute = date.getMinutes();
-
-      return apptHour === slotHour && apptMinute === slotMinute;
+      const { hour, minute } = getClinicHoursMinutes(appt.scheduledDate);
+      return hour === slotHour && minute === slotMinute;
     });
   };
 

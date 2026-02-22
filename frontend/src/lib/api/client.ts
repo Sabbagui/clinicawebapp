@@ -1,10 +1,13 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 
-// Create axios instance with base configuration
-// Use empty baseURL in browser so Next.js can proxy requests via rewrites
-// Use full URL in SSR for direct backend calls
+// Browser requests stay same-origin (`/api/...`) so Next.js can proxy via rewrites.
+// SSR can call the backend directly using NEXT_PUBLIC_API_URL (set in Docker compose).
+const serverApiBaseUrl =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (process.env.NODE_ENV === 'production' ? 'http://backend:3001' : 'http://localhost:3001');
+
 const apiClient: AxiosInstance = axios.create({
-  baseURL: typeof window !== 'undefined' ? '' : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'),
+  baseURL: typeof window !== 'undefined' ? '' : serverApiBaseUrl,
   headers: {
     'Content-Type': 'application/json',
   },

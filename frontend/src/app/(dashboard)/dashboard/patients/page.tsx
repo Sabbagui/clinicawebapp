@@ -76,7 +76,7 @@ export default function PatientsPage() {
       {!isLoading && patients.length > 0 && filteredPatients.length === 0 && (
         <div className="text-center py-12">
           <p className="text-muted-foreground">
-            Nenhum paciente encontrado para "{searchQuery}"
+            Nenhum paciente encontrado para &quot;{searchQuery}&quot;
           </p>
         </div>
       )}

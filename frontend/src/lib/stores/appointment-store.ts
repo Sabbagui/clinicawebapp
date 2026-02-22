@@ -8,6 +8,7 @@ import {
   updateAppointment,
   updateAppointmentStatus,
 } from '@/lib/api/endpoints/appointments';
+import { getApiErrorMessage } from '@/lib/api/error-utils';
 
 interface AppointmentState {
   appointments: Appointment[];
@@ -40,7 +41,7 @@ export const useAppointmentStore = create<AppointmentState>((set) => ({
       set({ appointments, isLoading: false });
     } catch (error: any) {
       set({
-        error: error.response?.data?.message || 'Erro ao carregar agendamentos',
+        error: getApiErrorMessage(error, 'Erro ao carregar agendamentos'),
         isLoading: false,
       });
     }
@@ -53,7 +54,7 @@ export const useAppointmentStore = create<AppointmentState>((set) => ({
       set({ currentAppointment: appointment, isLoading: false });
     } catch (error: any) {
       set({
-        error: error.response?.data?.message || 'Erro ao carregar agendamento',
+        error: getApiErrorMessage(error, 'Erro ao carregar agendamento'),
         isLoading: false,
       });
     }
@@ -72,7 +73,7 @@ export const useAppointmentStore = create<AppointmentState>((set) => ({
       return newAppointment;
     } catch (error: any) {
       set({
-        error: error.response?.data?.message || 'Erro ao criar agendamento',
+        error: getApiErrorMessage(error, 'Erro ao criar agendamento'),
         isLoading: false,
       });
       throw error;
@@ -91,7 +92,7 @@ export const useAppointmentStore = create<AppointmentState>((set) => ({
       return updated;
     } catch (error: any) {
       set({
-        error: error.response?.data?.message || 'Erro ao atualizar agendamento',
+        error: getApiErrorMessage(error, 'Erro ao atualizar agendamento'),
         isLoading: false,
       });
       throw error;
@@ -111,7 +112,7 @@ export const useAppointmentStore = create<AppointmentState>((set) => ({
       return updated;
     } catch (error: any) {
       set({
-        error: error.response?.data?.message || 'Erro ao alterar status',
+        error: getApiErrorMessage(error, 'Erro ao alterar status'),
         isLoading: false,
       });
       throw error;

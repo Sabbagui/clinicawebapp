@@ -1,4 +1,4 @@
-import { Users } from 'lucide-react';
+﻿import { Users } from 'lucide-react';
 
 export function EmptyPatientsState() {
   return (
@@ -7,8 +7,9 @@ export function EmptyPatientsState() {
       <h3 className="text-lg font-semibold mb-2">Nenhum paciente cadastrado</h3>
       <p className="text-sm text-muted-foreground max-w-sm">
         Comece adicionando o primeiro paciente ao sistema clicando no botão
-        "Novo Paciente" acima.
+        &quot;Novo Paciente&quot; acima.
       </p>
     </div>
   );
 }
+

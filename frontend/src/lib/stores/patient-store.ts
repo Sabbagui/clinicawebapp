@@ -8,6 +8,7 @@ import {
   updatePatient,
   deletePatient,
 } from '@/lib/api/endpoints/patients';
+import { getApiErrorMessage } from '@/lib/api/error-utils';
 
 interface PatientState {
   patients: Patient[];
@@ -38,7 +39,7 @@ export const usePatientStore = create<PatientState>((set, get) => ({
       set({ patients, isLoading: false });
     } catch (error: any) {
       set({
-        error: error.response?.data?.message || error.message || 'Erro ao carregar pacientes',
+        error: getApiErrorMessage(error, 'Erro ao carregar pacientes'),
         isLoading: false,
       });
     }
@@ -51,7 +52,7 @@ export const usePatientStore = create<PatientState>((set, get) => ({
       set({ currentPatient: patient, isLoading: false });
     } catch (error: any) {
       set({
-        error: error.response?.data?.message || error.message || 'Erro ao carregar paciente',
+        error: getApiErrorMessage(error, 'Erro ao carregar paciente'),
         isLoading: false,
       });
     }
@@ -73,7 +74,7 @@ export const usePatientStore = create<PatientState>((set, get) => ({
       return newPatient;
     } catch (error: any) {
       set({
-        error: error.response?.data?.message || error.message || 'Erro ao criar paciente',
+        error: getApiErrorMessage(error, 'Erro ao criar paciente'),
         isLoading: false,
       });
       throw error;
@@ -95,7 +96,7 @@ export const usePatientStore = create<PatientState>((set, get) => ({
       return updatedPatient;
     } catch (error: any) {
       set({
-        error: error.response?.data?.message || error.message || 'Erro ao atualizar paciente',
+        error: getApiErrorMessage(error, 'Erro ao atualizar paciente'),
         isLoading: false,
       });
       throw error;
@@ -115,7 +116,7 @@ export const usePatientStore = create<PatientState>((set, get) => ({
       }));
     } catch (error: any) {
       set({
-        error: error.response?.data?.message || error.message || 'Erro ao deletar paciente',
+        error: getApiErrorMessage(error, 'Erro ao desativar paciente'),
         isLoading: false,
       });
       throw error;

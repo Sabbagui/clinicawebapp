@@ -25,11 +25,11 @@ enum AppointmentStatus {
 }
 
 enum PaymentMethod {
-  CASH
   PIX
+  CASH
   CREDIT_CARD
   DEBIT_CARD
-  HEALTH_INSURANCE
+  BANK_TRANSFER
 }
 
 enum PaymentStatus {
@@ -37,6 +37,11 @@ enum PaymentStatus {
   PAID
   CANCELLED
   REFUNDED
+}
+
+enum MedicalRecordStatus {
+  DRAFT
+  FINAL
 }
 
 model User {
@@ -49,8 +54,9 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  appointments    Appointment[]
-  medicalRecords  MedicalRecord[]
+  appointments       Appointment[]
+  medicalRecords     MedicalRecord[]
+  finalizedRecords   MedicalRecord[]   @relation("FinalizedRecords")
 
   @@map("users")
 }
@@ -105,33 +111,36 @@ model Appointment {
   medicalRecord MedicalRecord?
   payment       Payment?
 
+  @@index([doctorId, scheduledDate])
+  @@index([patientId, scheduledDate])
+  @@index([status, scheduledDate])
   @@map("appointments")
 }
 
 model MedicalRecord {
-  id            String   @id @default(uuid())
+  id            String              @id @default(uuid())
   patientId     String
-  patient       Patient  @relation(fields: [patientId], references: [id])
-  appointmentId String?  @unique
-  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+  patient       Patient             @relation(fields: [patientId], references: [id])
+  appointmentId String?             @unique
+  appointment   Appointment?        @relation(fields: [appointmentId], references: [id])
   doctorId      String
-  doctor        User     @relation(fields: [doctorId], references: [id])
-  date          DateTime @default(now())
+  doctor        User                @relation(fields: [doctorId], references: [id])
+  date          DateTime            @default(now())
 
   // SOAP Notes
-  chiefComplaint           String // Queixa principal
-  historyOfPresentIllness  String // História da doença atual
-  physicalExamination      String // Exame físico
-  diagnosis                String // Diagnóstico
-  treatment                String // Tratamento
+  subjective    String              @default("")
+  objective     String              @default("")
+  assessment    String              @default("")
+  plan          String              @default("")
 
-  // Additional data (JSON)
-  prescriptions Json? // Array of prescriptions
-  labOrders     Json? // Array of lab orders
-  notes         String?
+  // Status
+  status        MedicalRecordStatus @default(DRAFT)
+  finalizedAt   DateTime?
+  finalizedById String?
+  finalizedBy   User?               @relation("FinalizedRecords", fields: [finalizedById], references: [id])
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
 
   @@map("medical_records")
 }
@@ -140,12 +149,32 @@ model Payment {
   id            String        @id @default(uuid())
   appointmentId String        @unique
   appointment   Appointment   @relation(fields: [appointmentId], references: [id])
-  amount        Float
+  amount        Int
   method        PaymentMethod
   status        PaymentStatus @default(PENDING)
   paidAt        DateTime?
+  refundedAt    DateTime?
+  notes         String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
+  @@index([status])
   @@map("payments")
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String
+  actorRole   String
+  action      String
+  entityType  String
+  entityId    String
+  metadata    Json?
+  ip          String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@map("audit_logs")
 }
