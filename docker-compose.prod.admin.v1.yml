@@ -1,0 +1,31 @@
+version: '2.4'
+
+# Optional admin tools for docker-compose v1.
+# Enable only when needed:
+#   docker-compose -f docker-compose.prod.yml -f docker-compose.prod.admin.v1.yml up -d pgadmin
+# Remote access example (SSH tunnel over Tailscale):
+#   ssh -L 5050:127.0.0.1:5050 guilherme@100.74.93.53
+services:
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: gynecology-practice-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@example.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-change-this-pgadmin-password}
+    ports:
+      - '127.0.0.1:5050:80'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - internal
+
+volumes:
+  pgadmin_data:
+
+networks:
+  internal:
+    external: false
