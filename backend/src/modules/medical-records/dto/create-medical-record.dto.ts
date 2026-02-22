@@ -1,51 +1,39 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsUUID } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
 
 export class CreateMedicalRecordDto {
-  @ApiProperty({ example: 'uuid-of-appointment' })
-  @IsUUID()
+  @ApiProperty()
+  @IsString()
   @IsNotEmpty()
   appointmentId: string;
 
-  @ApiProperty({ example: 'uuid-of-patient' })
-  @IsUUID()
+  @ApiProperty()
+  @IsString()
   @IsNotEmpty()
   patientId: string;
 
-  @ApiProperty({ example: 'uuid-of-doctor' })
-  @IsUUID()
+  @ApiProperty()
+  @IsString()
   @IsNotEmpty()
   doctorId: string;
 
-  @ApiProperty({
-    example: 'Paciente relata dor pélvica há 3 dias',
-    description: 'Subjetivo: queixa principal, história da doença atual',
-  })
+  @ApiProperty({ required: false })
   @IsString()
-  @IsNotEmpty()
-  subjective: string;
+  @IsOptional()
+  subjective?: string;
 
-  @ApiProperty({
-    example: 'PA 120/80, FC 72. Abdome: dor à palpação em FIE',
-    description: 'Objetivo: exame físico, sinais vitais',
-  })
+  @ApiProperty({ required: false })
   @IsString()
-  @IsNotEmpty()
-  objective: string;
+  @IsOptional()
+  objective?: string;
 
-  @ApiProperty({
-    example: 'Suspeita de endometriose. Solicitar USG pélvica.',
-    description: 'Avaliação: diagnóstico, hipóteses diagnósticas',
-  })
+  @ApiProperty({ required: false })
   @IsString()
-  @IsNotEmpty()
-  assessment: string;
+  @IsOptional()
+  assessment?: string;
 
-  @ApiProperty({
-    example: 'Ibuprofeno 400mg 8/8h por 5 dias. Retorno com exames em 15 dias.',
-    description: 'Plano: tratamento, prescrições, orientações',
-  })
+  @ApiProperty({ required: false })
   @IsString()
-  @IsNotEmpty()
-  plan: string;
+  @IsOptional()
+  plan?: string;
 }

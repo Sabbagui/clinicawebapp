@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert } from '@/components/ui/alert';
 import { PatientDetailSection, DetailItem } from '@/components/patients/patient-detail-section';
-import { formatCPF, formatPhone, formatDate, formatZipCode, calculateAge } from '@/lib/utils';
-import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
+import { formatCPF, formatPhone, formatDateOnly, formatZipCode, calculateAge } from '@/lib/utils';
+import { ArrowLeft, Pencil, Archive, ClipboardList } from 'lucide-react';
 
 export default function PatientDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -85,6 +85,13 @@ export default function PatientDetailPage({ params }: { params: { id: string } }
         <div className="flex gap-2">
           <Button
             variant="outline"
+            onClick={() => router.push(`/dashboard/patients/${params.id}/history`)}
+          >
+            <ClipboardList className="h-4 w-4 mr-2" />
+            Histórico
+          </Button>
+          <Button
+            variant="outline"
             onClick={() => router.push(`/dashboard/patients/${params.id}/edit`)}
           >
             <Pencil className="h-4 w-4 mr-2" />
@@ -95,8 +102,8 @@ export default function PatientDetailPage({ params }: { params: { id: string } }
             onClick={() => setShowDeleteDialog(true)}
             className="text-destructive hover:text-destructive"
           >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Excluir
+            <Archive className="h-4 w-4 mr-2" />
+            Desativar
           </Button>
         </div>
       </div>
@@ -109,7 +116,7 @@ export default function PatientDetailPage({ params }: { params: { id: string } }
           <DetailItem label="CPF" value={formatCPF(currentPatient.cpf)} />
           <DetailItem
             label="Data de Nascimento"
-            value={`${formatDate(currentPatient.birthDate)} (${age} anos)`}
+            value={`${formatDateOnly(currentPatient.birthDate)} (${age} anos)`}
           />
         </PatientDetailSection>
 
@@ -152,10 +159,10 @@ export default function PatientDetailPage({ params }: { params: { id: string } }
 
           {/* Dialog */}
           <div className="relative z-50 w-full max-w-lg mx-4 bg-card border rounded-lg shadow-lg p-6">
-            <h2 className="text-lg font-semibold mb-2">Confirmar Exclusão</h2>
+            <h2 className="text-lg font-semibold mb-2">Confirmar Desativação</h2>
             <p className="text-sm text-muted-foreground mb-6">
-              Tem certeza que deseja excluir o paciente{' '}
-              <strong>{currentPatient.name}</strong>? Esta ação não pode ser desfeita.
+              Tem certeza que deseja desativar o paciente{' '}
+              <strong>{currentPatient.name}</strong>? O cadastro será arquivado e não aparecerá mais na lista de pacientes ativos.
             </p>
 
             <div className="flex justify-end gap-4">
@@ -171,7 +178,7 @@ export default function PatientDetailPage({ params }: { params: { id: string } }
                 onClick={handleDelete}
                 disabled={isDeleting}
               >
-                {isDeleting ? 'Excluindo...' : 'Excluir'}
+                {isDeleting ? 'Desativando...' : 'Desativar'}
               </Button>
             </div>
           </div>

@@ -30,11 +30,11 @@ enum MedicalRecordStatus {
 }
 
 enum PaymentMethod {
-  CASH
   PIX
+  CASH
   CREDIT_CARD
   DEBIT_CARD
-  HEALTH_INSURANCE
+  BANK_TRANSFER
 }
 
 enum PaymentStatus {
@@ -42,6 +42,11 @@ enum PaymentStatus {
   PAID
   CANCELLED
   REFUNDED
+}
+
+enum MedicalRecordStatus {
+  DRAFT
+  FINAL
 }
 
 model User {
@@ -116,6 +121,9 @@ model Appointment {
   medicalRecord MedicalRecord?
   payment       Payment?
 
+  @@index([doctorId, scheduledDate])
+  @@index([patientId, scheduledDate])
+  @@index([status, scheduledDate])
   @@map("appointments")
 }
 
@@ -130,19 +138,19 @@ model MedicalRecord {
   date          DateTime            @default(now())
 
   // SOAP Notes
-  subjective  String // Subjetivo: queixa principal, HDA
-  objective   String // Objetivo: exame físico, sinais vitais
-  assessment  String // Avaliação: diagnóstico, hipóteses
-  plan        String // Plano: tratamento, prescrições, orientações
+  subjective    String              @default("")
+  objective     String              @default("")
+  assessment    String              @default("")
+  plan          String              @default("")
 
-  // Finalization
+  // Status
   status        MedicalRecordStatus @default(DRAFT)
   finalizedAt   DateTime?
   finalizedById String?
   finalizedBy   User?               @relation("FinalizedRecords", fields: [finalizedById], references: [id])
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
 
   @@map("medical_records")
 }
@@ -151,12 +159,32 @@ model Payment {
   id            String        @id @default(uuid())
   appointmentId String        @unique
   appointment   Appointment   @relation(fields: [appointmentId], references: [id])
-  amount        Float
+  amount        Int
   method        PaymentMethod
   status        PaymentStatus @default(PENDING)
   paidAt        DateTime?
+  refundedAt    DateTime?
+  notes         String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
+  @@index([status])
   @@map("payments")
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String
+  actorRole   String
+  action      String
+  entityType  String
+  entityId    String
+  metadata    Json?
+  ip          String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@map("audit_logs")
 }

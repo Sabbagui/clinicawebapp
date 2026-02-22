@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuthStore } from '@/lib/stores/auth-store';
-import { Calendar, Users, FileText } from 'lucide-react';
+import { Calendar, Users, FileText, BarChart3 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function DashboardPage() {
@@ -19,7 +19,7 @@ export default function DashboardPage() {
       </div>
 
       {/* User Profile Card */}
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid md:grid-cols-4 gap-6">
         <div className="p-6 border rounded-lg bg-card shadow-sm">
           <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" />
@@ -77,6 +77,23 @@ export default function DashboardPage() {
           </p>
           <div className="mt-4 text-xs text-muted-foreground">
             Clique para cadastrar e visualizar pacientes.
+          </div>
+        </div>
+
+        {/* Finance */}
+        <div
+          className="p-6 border rounded-lg bg-card shadow-sm cursor-pointer hover:shadow-md hover:border-primary/50 transition-all"
+          onClick={() => router.push('/dashboard/finance')}
+        >
+          <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-primary" />
+            Financeiro
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            Acompanhe recebimentos e pendências
+          </p>
+          <div className="mt-4 text-xs text-muted-foreground">
+            Clique para abrir o painel financeiro.
           </div>
         </div>
       </div>

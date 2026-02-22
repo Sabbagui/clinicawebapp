@@ -1,9 +1,10 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { PatientFormData, patientFormSchema } from '@/lib/validation/patient-schema';
 import { Input } from '@/components/ui/input';
+import { DateInput } from '@/components/ui/date-input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
@@ -33,6 +34,7 @@ export function PatientForm({
     handleSubmit,
     setValue,
     watch,
+    control,
     formState: { errors },
   } = useForm<PatientFormData>({
     resolver: zodResolver(patientFormSchema),
@@ -126,11 +128,18 @@ export function PatientForm({
         <div className="grid md:grid-cols-2 gap-4">
           <div>
             <Label htmlFor="birthDate">Data de Nascimento *</Label>
-            <Input
-              id="birthDate"
-              type="date"
-              {...register('birthDate')}
-              error={errors.birthDate?.message}
+            <Controller
+              control={control}
+              name="birthDate"
+              render={({ field }) => (
+                <DateInput
+                  id="birthDate"
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  error={errors.birthDate?.message}
+                />
+              )}
             />
           </div>
         </div>

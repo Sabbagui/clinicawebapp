@@ -57,3 +57,19 @@ prisma/.env
 
 # Windows artifacts
 nul
+
+# Repo Hygiene Guardrails
+**/node_modules
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.local.example
+**/dist
+**/.next
+**/build
+**/coverage
+**/*.log
+**/.turbo
+**/.cache
+**/tmp
+**/.DS_Store

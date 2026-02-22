@@ -5,9 +5,24 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '@/common/prisma/prisma.service';
+import { getSaoPauloDayRange, toSaoPauloYYYYMMDD } from '@/common/time/br-time';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
-import { AppointmentStatus, Prisma, PrismaClient } from '@prisma/client';
+import { AppointmentStatus, PaymentStatus } from '@prisma/client';
+
+const PAYMENT_REQUIRED_TYPES = new Set(['CONSULTA']);
+
+function normalizeAppointmentType(type: string): string {
+  return type
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toUpperCase();
+}
+
+export function isPaymentRequired(type: string): boolean {
+  return PAYMENT_REQUIRED_TYPES.has(normalizeAppointmentType(type));
+}
 
 const INCLUDE_RELATIONS = {
   patient: { select: { id: true, name: true, phone: true } },
@@ -15,7 +30,7 @@ const INCLUDE_RELATIONS = {
 };
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
-  SCHEDULED: ['CONFIRMED', 'CANCELLED'],
+  SCHEDULED: ['CONFIRMED', 'IN_PROGRESS', 'CANCELLED'],
   CONFIRMED: ['IN_PROGRESS', 'CANCELLED', 'NO_SHOW'],
   IN_PROGRESS: ['COMPLETED'],
 };
@@ -36,15 +51,13 @@ export class AppointmentsService {
     excludeId?: string,
     tx: PrismaTransaction = this.prisma,
   ) {
-    const dayStart = new Date(scheduledDate);
-    dayStart.setUTCHours(0, 0, 0, 0);
-    const dayEnd = new Date(scheduledDate);
-    dayEnd.setUTCHours(23, 59, 59, 999);
+    const saoPauloDay = toSaoPauloYYYYMMDD(scheduledDate);
+    const { startUtc, endUtc } = getSaoPauloDayRange(saoPauloDay);
 
     const existingAppointments = await tx.appointment.findMany({
       where: {
         doctorId,
-        scheduledDate: { gte: dayStart, lte: dayEnd },
+        scheduledDate: { gte: startUtc, lt: endUtc },
         status: { notIn: ['CANCELLED', 'NO_SHOW'] },
         ...(excludeId ? { id: { not: excludeId } } : {}),
       },
@@ -114,6 +127,109 @@ export class AppointmentsService {
       include: INCLUDE_RELATIONS,
       orderBy: { scheduledDate: 'asc' },
     });
+  }
+
+  async findByDay(date: string, doctorId?: string, status?: AppointmentStatus) {
+    const { startUtc, endUtc } = getSaoPauloDayRange(date);
+
+    const where: any = {
+      scheduledDate: { gte: startUtc, lt: endUtc },
+    };
+    if (doctorId) where.doctorId = doctorId;
+    if (status) where.status = status;
+
+    const appointments = await this.prisma.appointment.findMany({
+      where,
+      include: {
+        ...INCLUDE_RELATIONS,
+        patient: { select: { id: true, name: true, phone: true, birthDate: true } },
+        medicalRecord: { select: { id: true, status: true } },
+        payment: { select: { amount: true, status: true } },
+      },
+      orderBy: { scheduledDate: 'asc' },
+    });
+
+    const now = new Date();
+    const nowPlus60 = new Date(now.getTime() + 60 * 60_000);
+    const nowMinus90 = new Date(now.getTime() - 90 * 60_000);
+
+    // KPIs
+    const kpis = {
+      total: appointments.length,
+      scheduled: 0,
+      confirmed: 0,
+      inProgress: 0,
+      completed: 0,
+      noShow: 0,
+      cancelled: 0,
+      remaining: 0,
+      receivedCents: 0,
+      pendingCents: 0,
+    };
+    for (const apt of appointments) {
+      switch (apt.status) {
+        case AppointmentStatus.SCHEDULED: kpis.scheduled++; break;
+        case AppointmentStatus.CONFIRMED: kpis.confirmed++; break;
+        case AppointmentStatus.IN_PROGRESS: kpis.inProgress++; break;
+        case AppointmentStatus.COMPLETED: kpis.completed++; break;
+        case AppointmentStatus.NO_SHOW: kpis.noShow++; break;
+        case AppointmentStatus.CANCELLED: kpis.cancelled++; break;
+      }
+
+      if (apt.payment?.status === PaymentStatus.PAID) {
+        kpis.receivedCents += apt.payment.amount;
+      }
+      if (apt.payment?.status === PaymentStatus.PENDING) {
+        kpis.pendingCents += apt.payment.amount;
+      }
+    }
+    kpis.remaining = kpis.total - kpis.completed - kpis.cancelled - kpis.noShow;
+
+    // Rows with flags
+    const rows = appointments.map((apt) => {
+      const startTime = apt.scheduledDate;
+      const endTime = new Date(startTime.getTime() + apt.duration * 60_000);
+
+      // missingSoap: IN_PROGRESS with no record, OR COMPLETED with no FINAL record
+      const missingSoap =
+        (apt.status === AppointmentStatus.IN_PROGRESS && !apt.medicalRecord) ||
+        (apt.status === AppointmentStatus.COMPLETED &&
+          (!apt.medicalRecord || apt.medicalRecord.status !== 'FINAL'));
+
+      // upcomingUnconfirmed: starts within 60 min AND status is SCHEDULED
+      const upcomingUnconfirmed =
+        apt.status === AppointmentStatus.SCHEDULED &&
+        startTime >= now &&
+        startTime <= nowPlus60;
+
+      // overdueInProgress: IN_PROGRESS and started > 90 min ago
+      const overdueInProgress =
+        apt.status === AppointmentStatus.IN_PROGRESS &&
+        startTime < nowMinus90;
+
+      return {
+        id: apt.id,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        durationMinutes: apt.duration,
+        status: apt.status,
+        type: apt.type,
+        notes: apt.notes,
+        patient: apt.patient,
+        doctor: apt.doctor,
+        flags: {
+          missingSoap,
+          upcomingUnconfirmed,
+          overdueInProgress,
+        },
+      };
+    });
+
+    return {
+      meta: { date, timezone: 'America/Sao_Paulo' },
+      kpis,
+      rows,
+    };
   }
 
   async findOne(id: string) {
@@ -245,3 +361,5 @@ export class AppointmentsService {
     });
   }
 }
+
+

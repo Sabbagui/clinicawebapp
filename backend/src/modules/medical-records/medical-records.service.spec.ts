@@ -1,34 +1,22 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, ConflictException } from '@nestjs/common';
-import { MedicalRecordsService } from './medical-records.service';
+import { ForbiddenException } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
 import { PrismaService } from '@/common/prisma/prisma.service';
-
-const mockPrisma = {
-  appointment: {
-    findUnique: jest.fn(),
-  },
-  medicalRecord: {
-    findUnique: jest.fn(),
-    create: jest.fn(),
-    update: jest.fn(),
-  },
-};
-
-const DOCTOR_USER = { id: 'doctor-1', role: 'DOCTOR' };
-
-const makeDto = (overrides = {}) => ({
-  appointmentId: 'appt-1',
-  patientId: 'patient-1',
-  doctorId: 'doctor-1',
-  subjective: 'Dor pélvica há 3 dias',
-  objective: 'PA 120/80',
-  assessment: 'Suspeita de endometriose',
-  plan: 'Ibuprofeno 400mg 8/8h',
-  ...overrides,
-});
+import { MedicalRecordsService } from './medical-records.service';
 
 describe('MedicalRecordsService', () => {
   let service: MedicalRecordsService;
+
+  const mockPrisma = {
+    appointment: {
+      findUnique: jest.fn(),
+    },
+    medicalRecord: {
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+    },
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -86,5 +74,31 @@ describe('MedicalRecordsService', () => {
         service.update('rec-1', { subjective: 'Novo texto' }),
       ).rejects.toThrow(ConflictException);
     });
+  it('returns 403 when receptionist tries to fetch medical record detail', async () => {
+    mockPrisma.medicalRecord.findUnique.mockResolvedValue({
+      id: 'mr-1',
+      doctorId: 'doctor-1',
+      appointment: { doctorId: 'doctor-1' },
+    });
+
+    await expect(
+      service.findOne('mr-1', { id: 'rec-1', role: UserRole.RECEPTIONIST }),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('allows admin to fetch medical record detail', async () => {
+    const record = {
+      id: 'mr-1',
+      doctorId: 'doctor-1',
+      appointment: { doctorId: 'doctor-1' },
+    };
+    mockPrisma.medicalRecord.findUnique.mockResolvedValue(record);
+
+    const result = await service.findOne('mr-1', {
+      id: 'admin-1',
+      role: UserRole.ADMIN,
+    });
+
+    expect(result).toEqual(record);
   });
 });

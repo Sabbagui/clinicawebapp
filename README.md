@@ -1,43 +1,61 @@
-# Sistema de Gestão - Consultório de Ginecologia
+﻿# Sistema de Gestão - Consultório de Ginecologia
 
 Sistema completo para gerenciamento de consultórios de ginecologia, incluindo agendamentos, prontuários eletrônicos, integração com WhatsApp e muito mais.
 
-## 🚀 Funcionalidades
+## Setup Rápido
+
+1. Instalar dependências no monorepo:
+   npm install
+
+2. Criar arquivos de ambiente locais:
+   copy backend\.env.example backend\.env
+   copy frontend\.env.example frontend\.env
+
+3. Gerar cliente Prisma e aplicar migrações:
+   cd backend
+   npx prisma generate
+   npx prisma migrate dev
+   cd ..
+
+4. Subir app (frontend + backend):
+   npm run dev
+
+## ðŸš€ Funcionalidades
 
 ### Implementadas
-- ✅ Autenticação e autorização com JWT
-- ✅ Gestão de usuários (Admin, Médico, Enfermeira, Recepcionista)
-- ✅ Cadastro completo de pacientes
-- ✅ Sistema de prontuários eletrônicos (SOAP)
-- ✅ Estrutura para agendamentos
-- ✅ Controle de pagamentos (Dinheiro, PIX, Cartões)
-- ✅ API REST documentada com Swagger
+- âœ… AutenticaÃ§Ã£o e autorizaÃ§Ã£o com JWT
+- âœ… GestÃ£o de usuÃ¡rios (Admin, MÃ©dico, Enfermeira, Recepcionista)
+- âœ… Cadastro completo de pacientes
+- âœ… Sistema de prontuÃ¡rios eletrÃ´nicos (SOAP)
+- âœ… Estrutura para agendamentos
+- âœ… Controle de pagamentos (Dinheiro, PIX, CartÃµes)
+- âœ… API REST documentada com Swagger
 
 ### Em Desenvolvimento
-- 🔄 Sistema completo de agendamentos
-- 🔄 Integração com WhatsApp Business API
-- 🔄 Interface frontend completa
-- 🔄 Lembretes automáticos de consultas
-- 🔄 Relatórios e análises
+- ðŸ”„ Sistema completo de agendamentos
+- ðŸ”„ IntegraÃ§Ã£o com WhatsApp Business API
+- ðŸ”„ Interface frontend completa
+- ðŸ”„ Lembretes automÃ¡ticos de consultas
+- ðŸ”„ RelatÃ³rios e anÃ¡lises
 
-## 📋 Pré-requisitos
+## ðŸ“‹ PrÃ©-requisitos
 
-Antes de começar, você precisará ter instalado em sua máquina:
+Antes de comeÃ§ar, vocÃª precisarÃ¡ ter instalado em sua mÃ¡quina:
 
 - [Node.js](https://nodejs.org/) (v18 ou superior)
 - [PostgreSQL](https://www.postgresql.org/) (v14 ou superior)
 - [Git](https://git-scm.com/)
 
-## 🛠️ Instalação
+## ðŸ› ï¸ InstalaÃ§Ã£o
 
 ### 1. Instalar Node.js
 
 **Windows:**
 - Baixe o instalador em: https://nodejs.org/
-- Execute o instalador e siga as instruções
-- Reinicie o terminal após a instalação
+- Execute o instalador e siga as instruÃ§Ãµes
+- Reinicie o terminal apÃ³s a instalaÃ§Ã£o
 
-**Verificar instalação:**
+**Verificar instalaÃ§Ã£o:**
 ```bash
 node --version
 npm --version
@@ -48,23 +66,23 @@ npm --version
 **Windows:**
 - Baixe em: https://www.postgresql.org/download/windows/
 - Execute o instalador
-- Anote a senha do usuário postgres
-- Mantenha a porta padrão (5432)
+- Anote a senha do usuÃ¡rio postgres
+- Mantenha a porta padrÃ£o (5432)
 
 ### 3. Clonar e Configurar o Projeto
 
 ```bash
-# Navegar até o diretório do projeto
+# Navegar atÃ© o diretÃ³rio do projeto
 cd C:\Users\sabba\gynecology-practice-app
 
-# Instalar dependências do projeto raiz
+# Instalar dependÃªncias do projeto raiz
 npm install
 
-# Instalar dependências do frontend
+# Instalar dependÃªncias do frontend
 cd frontend
 npm install
 
-# Instalar dependências do backend
+# Instalar dependÃªncias do backend
 cd ../backend
 npm install
 ```
@@ -77,7 +95,7 @@ npm install
 createdb gynecology_practice
 ```
 
-### 5. Configurar Variáveis de Ambiente
+### 5. Configurar VariÃ¡veis de Ambiente
 
 **Backend:**
 ```bash
@@ -104,7 +122,7 @@ Edite o arquivo `.env.local`:
 NEXT_PUBLIC_API_URL=http://localhost:3001
 ```
 
-### 6. Executar Migrações do Banco de Dados
+### 6. Executar MigraÃ§Ãµes do Banco de Dados
 
 ```bash
 cd backend
@@ -112,7 +130,7 @@ npx prisma generate
 npx prisma migrate dev --name init
 ```
 
-### 7. Criar Usuário Administrador (Seed)
+### 7. Criar UsuÃ¡rio Administrador (Seed)
 
 Crie um script de seed ou use o Prisma Studio:
 
@@ -120,9 +138,9 @@ Crie um script de seed ou use o Prisma Studio:
 npx prisma studio
 ```
 
-No Prisma Studio, adicione um usuário admin:
+No Prisma Studio, adicione um usuÃ¡rio admin:
 - email: admin@example.com
-- password: (será necessário hashear - veja abaixo)
+- password: (serÃ¡ necessÃ¡rio hashear - veja abaixo)
 - name: Administrador
 - role: ADMIN
 
@@ -132,16 +150,16 @@ const bcrypt = require('bcrypt');
 bcrypt.hash('sua-senha', 10).then(console.log);
 ```
 
-## 🚀 Executando a Aplicação
+## ðŸš€ Executando a AplicaÃ§Ã£o
 
 ### Modo Desenvolvimento
 
-**Opção 1: Executar tudo de uma vez (do diretório raiz):**
+**OpÃ§Ã£o 1: Executar tudo de uma vez (do diretÃ³rio raiz):**
 ```bash
 npm run dev
 ```
 
-**Opção 2: Executar separadamente:**
+**OpÃ§Ã£o 2: Executar separadamente:**
 
 Terminal 1 - Backend:
 ```bash
@@ -155,86 +173,86 @@ cd frontend
 npm run dev
 ```
 
-A aplicação estará disponível em:
+A aplicaÃ§Ã£o estarÃ¡ disponÃ­vel em:
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:3001/api
 - Swagger Docs: http://localhost:3001/api/docs
 
-## 📚 Documentação da API
+## ðŸ“š DocumentaÃ§Ã£o da API
 
-Acesse a documentação interativa Swagger em:
+Acesse a documentaÃ§Ã£o interativa Swagger em:
 ```
 http://localhost:3001/api/docs
 ```
 
 ### Endpoints Principais
 
-#### Autenticação
+#### AutenticaÃ§Ã£o
 - `POST /api/auth/login` - Login
-- `POST /api/auth/me` - Informações do usuário atual
+- `POST /api/auth/me` - InformaÃ§Ãµes do usuÃ¡rio atual
 
-#### Usuários
-- `GET /api/users` - Listar usuários
-- `POST /api/users` - Criar usuário (Admin)
-- `GET /api/users/:id` - Obter usuário
-- `DELETE /api/users/:id` - Deletar usuário (Admin)
+#### UsuÃ¡rios
+- `GET /api/users` - Listar usuÃ¡rios
+- `POST /api/users` - Criar usuÃ¡rio (Admin)
+- `GET /api/users/:id` - Obter usuÃ¡rio
+- `DELETE /api/users/:id` - Deletar usuÃ¡rio (Admin)
 
 #### Pacientes
 - `GET /api/patients` - Listar pacientes
 - `POST /api/patients` - Cadastrar paciente
-- `GET /api/patients/:id` - Obter paciente com histórico
+- `GET /api/patients/:id` - Obter paciente com histÃ³rico
 - `PATCH /api/patients/:id` - Atualizar paciente
 - `DELETE /api/patients/:id` - Deletar paciente
 
-## 🏗️ Estrutura do Projeto
+## ðŸ—ï¸ Estrutura do Projeto
 
 ```
 gynecology-practice-app/
-├── frontend/                 # Aplicação Next.js
-│   ├── src/
-│   │   ├── app/             # Pages (App Router)
-│   │   ├── components/      # Componentes React
-│   │   ├── lib/            # Utilitários
-│   │   └── types/          # TypeScript types
-│   └── public/             # Arquivos estáticos
-│
-├── backend/                 # API NestJS
-│   ├── src/
-│   │   ├── modules/        # Módulos da aplicação
-│   │   │   ├── auth/       # Autenticação
-│   │   │   ├── users/      # Usuários
-│   │   │   ├── patients/   # Pacientes
-│   │   │   ├── appointments/    # Agendamentos
-│   │   │   └── medical-records/ # Prontuários
-│   │   ├── common/         # Código compartilhado
-│   │   │   └── prisma/     # Prisma service
-│   │   └── config/         # Configurações
-│   └── prisma/
-│       └── schema.prisma   # Schema do banco de dados
-│
-└── package.json            # Workspace root
+â”œâ”€â”€ frontend/                 # AplicaÃ§Ã£o Next.js
+â”‚   â”œâ”€â”€ src/
+â”‚   â”‚   â”œâ”€â”€ app/             # Pages (App Router)
+â”‚   â”‚   â”œâ”€â”€ components/      # Componentes React
+â”‚   â”‚   â”œâ”€â”€ lib/            # UtilitÃ¡rios
+â”‚   â”‚   â””â”€â”€ types/          # TypeScript types
+â”‚   â””â”€â”€ public/             # Arquivos estÃ¡ticos
+â”‚
+â”œâ”€â”€ backend/                 # API NestJS
+â”‚   â”œâ”€â”€ src/
+â”‚   â”‚   â”œâ”€â”€ modules/        # MÃ³dulos da aplicaÃ§Ã£o
+â”‚   â”‚   â”‚   â”œâ”€â”€ auth/       # AutenticaÃ§Ã£o
+â”‚   â”‚   â”‚   â”œâ”€â”€ users/      # UsuÃ¡rios
+â”‚   â”‚   â”‚   â”œâ”€â”€ patients/   # Pacientes
+â”‚   â”‚   â”‚   â”œâ”€â”€ appointments/    # Agendamentos
+â”‚   â”‚   â”‚   â””â”€â”€ medical-records/ # ProntuÃ¡rios
+â”‚   â”‚   â”œâ”€â”€ common/         # CÃ³digo compartilhado
+â”‚   â”‚   â”‚   â””â”€â”€ prisma/     # Prisma service
+â”‚   â”‚   â””â”€â”€ config/         # ConfiguraÃ§Ãµes
+â”‚   â””â”€â”€ prisma/
+â”‚       â””â”€â”€ schema.prisma   # Schema do banco de dados
+â”‚
+â””â”€â”€ package.json            # Workspace root
 ```
 
-## 🔒 Segurança e Conformidade
+## ðŸ”’ SeguranÃ§a e Conformidade
 
 O sistema foi desenvolvido considerando:
 
-- ✅ **LGPD (Lei Geral de Proteção de Dados)** - Brasil
-- ✅ Criptografia de senhas com bcrypt
-- ✅ Autenticação JWT
-- ✅ Controle de acesso baseado em roles
-- ✅ Validação de dados de entrada
-- ✅ Proteção contra SQL Injection (Prisma ORM)
+- âœ… **LGPD (Lei Geral de ProteÃ§Ã£o de Dados)** - Brasil
+- âœ… Criptografia de senhas com bcrypt
+- âœ… AutenticaÃ§Ã£o JWT
+- âœ… Controle de acesso baseado em roles
+- âœ… ValidaÃ§Ã£o de dados de entrada
+- âœ… ProteÃ§Ã£o contra SQL Injection (Prisma ORM)
 
-### Recomendações de Produção
+### RecomendaÃ§Ãµes de ProduÃ§Ã£o
 - Usar HTTPS
 - Configurar rate limiting
 - Implementar logs de auditoria
-- Backup automático do banco de dados
+- Backup automÃ¡tico do banco de dados
 - Configurar firewall
-- Manter dependências atualizadas
+- Manter dependÃªncias atualizadas
 
-## 🧪 Testes
+## ðŸ§ª Testes
 
 ```bash
 # Backend
@@ -246,13 +264,13 @@ cd frontend
 npm run test
 ```
 
-## 📦 Build para Produção
+## ðŸ“¦ Build para ProduÃ§Ã£o
 
 ```bash
 # Build completo
 npm run build
 
-# Executar em produção
+# Executar em produÃ§Ã£o
 cd backend
 npm run start:prod
 
@@ -260,7 +278,7 @@ cd frontend
 npm run start
 ```
 
-## 🔧 Tecnologias Utilizadas
+## ðŸ”§ Tecnologias Utilizadas
 
 ### Frontend
 - Next.js 14
@@ -280,36 +298,40 @@ npm run start
 - Swagger/OpenAPI
 - Bcrypt
 
-## 🤝 Contribuindo
+## ðŸ¤ Contribuindo
 
-Este é um projeto privado. Para sugestões ou melhorias, entre em contato com a equipe.
+Este Ã© um projeto privado. Para sugestÃµes ou melhorias, entre em contato com a equipe.
 
-## 📞 Próximos Passos
+## ðŸ“ž PrÃ³ximos Passos
 
 1. **Implementar Agendamentos Completos**
-   - Calendário interativo
-   - Conflitos de horário
+   - CalendÃ¡rio interativo
+   - Conflitos de horÃ¡rio
    - Tipos de consulta
 
-2. **Integração WhatsApp**
+2. **IntegraÃ§Ã£o WhatsApp**
    - WhatsApp Business API
-   - Lembretes automáticos
-   - Confirmações de consulta
+   - Lembretes automÃ¡ticos
+   - ConfirmaÃ§Ãµes de consulta
 
-3. **Dashboard e Relatórios**
-   - Estatísticas do consultório
-   - Gráficos de atendimento
-   - Exportação de relatórios
+3. **Dashboard e RelatÃ³rios**
+   - EstatÃ­sticas do consultÃ³rio
+   - GrÃ¡ficos de atendimento
+   - ExportaÃ§Ã£o de relatÃ³rios
 
 4. **Melhorias na Interface**
    - Design system completo
    - Modo escuro
    - Acessibilidade
 
-## 📄 Licença
+## ðŸ“„ LicenÃ§a
 
 Propriedade privada. Todos os direitos reservados.
 
 ---
 
-**Desenvolvido para gestão eficiente de consultórios ginecológicos** 🏥
+**Desenvolvido para gestÃ£o eficiente de consultÃ³rios ginecolÃ³gicos** ðŸ¥
+
+
+
+

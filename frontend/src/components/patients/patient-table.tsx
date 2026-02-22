@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Eye, Pencil, Trash2 } from 'lucide-react';
-import { formatCPF, formatPhone, formatDate } from '@/lib/utils';
+import { formatCPF, formatPhone, formatDateOnly } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 
 interface PatientTableProps {
@@ -41,7 +41,7 @@ export function PatientTable({ patients, onDelete }: PatientTableProps) {
               <TableCell className="font-medium">{patient.name}</TableCell>
               <TableCell>{formatCPF(patient.cpf)}</TableCell>
               <TableCell>{formatPhone(patient.phone)}</TableCell>
-              <TableCell>{formatDate(patient.birthDate)}</TableCell>
+              <TableCell>{formatDateOnly(patient.birthDate)}</TableCell>
               <TableCell>
                 {patient.address.city} - {patient.address.state}
               </TableCell>
