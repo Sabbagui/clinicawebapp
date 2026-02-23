@@ -1,8 +1,9 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 // Browser requests stay same-origin (`/api/...`) so Next.js can proxy via rewrites.
-// SSR can call the backend directly using NEXT_PUBLIC_API_URL (set in Docker compose).
+// SSR can call the backend directly using INTERNAL_API_URL (set in Docker compose).
 const serverApiBaseUrl =
+  process.env.INTERNAL_API_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
   (process.env.NODE_ENV === 'production' ? 'http://backend:3001' : 'http://localhost:3001');
 

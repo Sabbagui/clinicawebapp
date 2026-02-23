@@ -2,7 +2,9 @@
 
 FROM node:20-alpine AS builder
 WORKDIR /app
-ARG NEXT_PUBLIC_API_URL=http://backend:3001
+ARG INTERNAL_API_URL=http://backend:3001
+ARG NEXT_PUBLIC_API_URL=/api
+ENV INTERNAL_API_URL=$INTERNAL_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 # Monorepo workspace install: use root lockfile and workspace manifests.
