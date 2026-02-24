@@ -37,7 +37,7 @@ export function DashboardNav() {
   };
 
   return (
-    <header className="border-b bg-card shadow-sm">
+    <header className="sticky top-0 z-40 border-b bg-card shadow-sm">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-14">
           {/* Logo / App Name */}
