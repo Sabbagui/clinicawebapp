@@ -113,12 +113,22 @@ export class AppointmentsService {
     const where: any = {};
 
     if (startDate && endDate) {
-      const { startUtc } = getSaoPauloDayRange(startDate);
-      const { endUtc } = getSaoPauloDayRange(endDate);
-      where.scheduledDate = {
-        gte: startUtc,
-        lt: endUtc,
-      };
+      const isYmdRange =
+        /^\d{4}-\d{2}-\d{2}$/.test(startDate) && /^\d{4}-\d{2}-\d{2}$/.test(endDate);
+
+      if (isYmdRange) {
+        const { startUtc } = getSaoPauloDayRange(startDate);
+        const { endUtc } = getSaoPauloDayRange(endDate);
+        where.scheduledDate = {
+          gte: startUtc,
+          lt: endUtc,
+        };
+      } else {
+        where.scheduledDate = {
+          gte: new Date(startDate),
+          lte: new Date(endDate),
+        };
+      }
     }
     if (doctorId) {
       where.doctorId = doctorId;
