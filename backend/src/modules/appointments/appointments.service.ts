@@ -8,7 +8,7 @@ import { PrismaService } from '@/common/prisma/prisma.service';
 import { getSaoPauloDayRange, toSaoPauloYYYYMMDD } from '@/common/time/br-time';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
-import { AppointmentStatus, PaymentStatus } from '@prisma/client';
+import { AppointmentStatus, PaymentStatus, Prisma, PrismaClient } from '@prisma/client';
 
 const PAYMENT_REQUIRED_TYPES = new Set(['CONSULTA']);
 

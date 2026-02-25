@@ -27,10 +27,7 @@ export class UsersService {
 
   async findAll(role?: string) {
     return this.prisma.user.findMany({
-      where: {
-        isActive: true,
-        ...(role ? { role: role as any } : {}),
-      },
+      where: role ? { role: role as any, isActive: true } : undefined,
       select: {
         id: true,
         email: true,
@@ -103,12 +100,6 @@ export class UsersService {
   }
 
   async remove(id: string) {
-    return this.prisma.user.update({
-      where: { id },
-      data: {
-        isActive: false,
-        deletedAt: new Date(),
-      },
-    });
+    return this.prisma.user.delete({ where: { id } });
   }
 }

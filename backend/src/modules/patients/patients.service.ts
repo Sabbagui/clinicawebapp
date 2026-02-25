@@ -42,7 +42,6 @@ export class PatientsService {
       : undefined;
 
     return this.prisma.patient.findMany({
-      where: { isActive: true },
       where,
       orderBy: { name: 'asc' },
     });
@@ -98,12 +97,6 @@ export class PatientsService {
         },
       },
     });
-
-    if (!patient) {
-      throw new NotFoundException('Paciente não encontrado');
-    }
-
-    return patient;
   }
 
   findByCpf(cpf: string) {
@@ -119,13 +112,9 @@ export class PatientsService {
     });
   }
 
-  async remove(id: string) {
-    return this.prisma.patient.update({
+  remove(id: string) {
+    return this.prisma.patient.delete({
       where: { id },
-      data: {
-        isActive: false,
-        deletedAt: new Date(),
-      },
     });
   }
 
