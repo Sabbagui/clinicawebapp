@@ -39,9 +39,23 @@ export class FinanceService {
       scheduledDate: { gte: startUtc, lt: endUtc },
       ...(doctorId ? { doctorId } : {}),
     };
+    const paymentInRangeByAppointmentOrCreatedAtWhere = {
+      OR: [
+        {
+          appointment: {
+            scheduledDate: { gte: startUtc, lt: endUtc },
+            ...(doctorId ? { doctorId } : {}),
+          },
+        },
+        {
+          createdAt: { gte: startUtc, lt: endUtc },
+          ...(doctorId ? { appointment: { doctorId } } : {}),
+        },
+      ],
+    };
     const pendingWhere = {
       status: PaymentStatus.PENDING,
-      appointment: appointmentInRangeWhere,
+      ...paymentInRangeByAppointmentOrCreatedAtWhere,
     };
 
     const [paidPayments, pendingPayments, refundedPayments, cancelledPayments, noShowCount, cancelledApptCount, topPending] =
@@ -89,7 +103,7 @@ export class FinanceService {
         this.prisma.payment.findMany({
           where: {
             status: PaymentStatus.CANCELLED,
-            appointment: appointmentInRangeWhere,
+            ...paymentInRangeByAppointmentOrCreatedAtWhere,
           },
           select: { amount: true },
         }),
@@ -180,7 +194,12 @@ export class FinanceService {
     }
 
     for (const payment of pendingPayments) {
-      const dayKey = toTimeZoneYYYYMMDD(payment.appointment.scheduledDate, timezone);
+      const effectivePendingDate =
+        payment.appointment.scheduledDate >= startUtc &&
+        payment.appointment.scheduledDate < endUtc
+          ? payment.appointment.scheduledDate
+          : payment.createdAt;
+      const dayKey = toTimeZoneYYYYMMDD(effectivePendingDate, timezone);
       const byMethod = this.getOrInitByMethod(byMethodMap, payment.method);
       const byDoctor = this.getOrInitByDoctor(
         byDoctorMap,
@@ -263,10 +282,18 @@ export class FinanceService {
     const where = {
       status: PaymentStatus.PENDING,
       ...(method ? { method } : {}),
-      appointment: {
-        scheduledDate: { gte: startUtc, lt: endUtc },
-        ...(doctorId ? { doctorId } : {}),
-      },
+      OR: [
+        {
+          appointment: {
+            scheduledDate: { gte: startUtc, lt: endUtc },
+            ...(doctorId ? { doctorId } : {}),
+          },
+        },
+        {
+          createdAt: { gte: startUtc, lt: endUtc },
+          ...(doctorId ? { appointment: { doctorId } } : {}),
+        },
+      ],
     };
 
     const [total, rowsRaw, kpiRows] = await Promise.all([
