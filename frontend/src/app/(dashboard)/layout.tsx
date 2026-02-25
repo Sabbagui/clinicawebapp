@@ -8,9 +8,9 @@ export default function DashboardLayout({
 }) {
   return (
     <AuthProvider>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background flex flex-col">
         <DashboardNav />
-        <main className="container mx-auto py-6 px-4">
+        <main className="container mx-auto flex-1 px-4 py-6">
           {children}
         </main>
       </div>

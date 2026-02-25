@@ -2,6 +2,7 @@
 
 FROM node:20-alpine AS builder
 WORKDIR /app
+RUN apk add --no-cache openssl
 
 # Monorepo workspace install: we need the root lockfile plus workspace manifests.
 COPY package*.json ./
@@ -15,6 +16,7 @@ RUN npm run build --workspace backend
 
 FROM node:20-alpine AS prod-deps
 WORKDIR /app
+RUN apk add --no-cache openssl
 COPY package*.json ./
 COPY backend/package.json ./backend/package.json
 COPY frontend/package.json ./frontend/package.json
@@ -22,6 +24,7 @@ RUN npm ci --omit=dev --workspace backend --include-workspace-root && npm cache 
 
 FROM node:20-alpine AS runner
 WORKDIR /app
+RUN apk add --no-cache openssl
 ENV NODE_ENV=production
 
 COPY package*.json ./
