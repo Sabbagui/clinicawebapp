@@ -11,6 +11,7 @@ import { MedicalRecordsModule } from './modules/medical-records/medical-records.
 import { PaymentsModule } from './modules/payments/payments.module';
 import { FinanceModule } from './modules/finance/finance.module';
 import { AuditModule } from './modules/audit/audit.module';
+import { DoctorScheduleModule } from './modules/doctor-schedule/doctor-schedule.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { AuditModule } from './modules/audit/audit.module';
     PaymentsModule,
     FinanceModule,
     AuditModule,
+    DoctorScheduleModule,
   ],
   controllers: [AppController],
   providers: [AppService],

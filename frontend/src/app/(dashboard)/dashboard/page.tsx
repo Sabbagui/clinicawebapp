@@ -3,6 +3,7 @@
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { Calendar, Users, FileText, BarChart3 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { DailyOverview } from '@/components/dashboard/DailyOverview';
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
@@ -10,7 +11,6 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="pb-4 border-b">
         <h1 className="text-3xl font-bold text-primary">Dashboard</h1>
         <p className="text-muted-foreground mt-1">
@@ -18,7 +18,6 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* User Profile Card */}
       <div className="grid md:grid-cols-4 gap-6">
         <div className="p-6 border rounded-lg bg-card shadow-sm">
           <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
@@ -31,10 +30,10 @@ export default function DashboardPage() {
               <p className="font-medium">{user?.email}</p>
             </div>
             <div>
-              <span className="text-muted-foreground">Função:</span>
+              <span className="text-muted-foreground">Funcao:</span>
               <p className="font-medium">
                 {user?.role === 'ADMIN' && 'Administrador'}
-                {user?.role === 'DOCTOR' && 'Médico(a)'}
+                {user?.role === 'DOCTOR' && 'Medico(a)'}
                 {user?.role === 'NURSE' && 'Enfermeiro(a)'}
                 {user?.role === 'RECEPTIONIST' && 'Recepcionista'}
               </p>
@@ -46,7 +45,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Appointments */}
         <div
           className="p-6 border rounded-lg bg-card shadow-sm cursor-pointer hover:shadow-md hover:border-primary/50 transition-all"
           onClick={() => router.push('/dashboard/appointments')}
@@ -63,7 +61,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Patients */}
         <div
           className="p-6 border rounded-lg bg-card shadow-sm cursor-pointer hover:shadow-md hover:border-primary/50 transition-all"
           onClick={() => router.push('/dashboard/patients')}
@@ -80,7 +77,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Finance */}
         <div
           className="p-6 border rounded-lg bg-card shadow-sm cursor-pointer hover:shadow-md hover:border-primary/50 transition-all"
           onClick={() => router.push('/dashboard/finance')}
@@ -90,7 +86,7 @@ export default function DashboardPage() {
             Financeiro
           </h3>
           <p className="text-sm text-muted-foreground">
-            Acompanhe recebimentos e pendências
+            Acompanhe recebimentos e pendencias
           </p>
           <div className="mt-4 text-xs text-muted-foreground">
             Clique para abrir o painel financeiro.
@@ -98,14 +94,15 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Info Box */}
       <div className="mt-8 p-6 bg-primary/5 border border-primary/20 rounded-lg">
-        <h3 className="font-semibold mb-2 text-primary">🎉 Sistema em Desenvolvimento</h3>
+        <h3 className="font-semibold mb-2 text-primary">Sistema em Desenvolvimento</h3>
         <p className="text-sm text-muted-foreground">
-          O sistema de autenticação, gestão de pacientes e agendamentos estão disponíveis.
-          A funcionalidade de prontuários médicos será implementada em breve.
+          O sistema de autenticacao, gestao de pacientes e agendamentos estao disponiveis.
+          A funcionalidade de prontuarios medicos sera implementada em breve.
         </p>
       </div>
+
+      <DailyOverview />
     </div>
   );
 }

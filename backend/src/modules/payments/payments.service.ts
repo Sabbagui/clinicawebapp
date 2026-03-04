@@ -13,6 +13,7 @@ import { UpdatePaymentDto } from './dto/update-payment.dto';
 const ACTIVE_APPOINTMENT_STATUSES: AppointmentStatus[] = [
   AppointmentStatus.SCHEDULED,
   AppointmentStatus.CONFIRMED,
+  AppointmentStatus.CHECKED_IN,
   AppointmentStatus.IN_PROGRESS,
   AppointmentStatus.COMPLETED,
 ];

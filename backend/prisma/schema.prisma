@@ -18,10 +18,19 @@ enum UserRole {
 enum AppointmentStatus {
   SCHEDULED
   CONFIRMED
+  CHECKED_IN
   IN_PROGRESS
   COMPLETED
   CANCELLED
   NO_SHOW
+}
+
+enum AppointmentType {
+  FIRST_VISIT
+  FOLLOW_UP
+  EXAM
+  PROCEDURE
+  URGENT
 }
 
 enum MedicalRecordStatus {
@@ -56,7 +65,10 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  appointments       Appointment[]
+  doctorAppointments  Appointment[]       @relation("DoctorAppointments")
+  createdAppointments Appointment[]       @relation("CreatedAppointments")
+  doctorSchedule      DoctorSchedule[]    @relation("DoctorSchedule")
+  doctorBlocked       DoctorBlockedSlot[] @relation("DoctorBlocked")
   medicalRecords     MedicalRecord[]
   finalizedRecords   MedicalRecord[] @relation("FinalizedRecords")
 
@@ -104,12 +116,18 @@ model Appointment {
   patientId     String
   patient       Patient           @relation(fields: [patientId], references: [id])
   doctorId      String
-  doctor        User              @relation(fields: [doctorId], references: [id])
+  doctor        User              @relation("DoctorAppointments", fields: [doctorId], references: [id])
+  createdById   String?
+  createdBy     User?             @relation("CreatedAppointments", fields: [createdById], references: [id])
+  date          DateTime?         @db.Date
+  startTime     DateTime?         @db.Time()
+  endTime       DateTime?         @db.Time()
   scheduledDate DateTime
   duration      Int               @default(30) // in minutes
   status        AppointmentStatus @default(SCHEDULED)
-  type          String // e.g., "Consulta", "Retorno", "Exame"
+  type          AppointmentType
   notes         String?
+  cancelReason  String?
   reminderSent  Boolean           @default(false)
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
@@ -120,7 +138,39 @@ model Appointment {
   @@index([doctorId, scheduledDate])
   @@index([patientId, scheduledDate])
   @@index([status, scheduledDate])
+  @@unique([doctorId, date, startTime], name: "unique_doctor_slot")
+  @@index([patientId])
+  @@index([doctorId, date])
+  @@index([date, status])
   @@map("appointments")
+}
+
+model DoctorSchedule {
+  id          String   @id @default(uuid())
+  doctorId    String
+  doctor      User     @relation("DoctorSchedule", fields: [doctorId], references: [id])
+  dayOfWeek   Int
+  startTime   String
+  endTime     String
+  slotMinutes Int      @default(30)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([doctorId, dayOfWeek])
+}
+
+model DoctorBlockedSlot {
+  id        String   @id @default(uuid())
+  doctorId  String
+  doctor    User     @relation("DoctorBlocked", fields: [doctorId], references: [id])
+  date      DateTime @db.Date
+  startTime DateTime @db.Time()
+  endTime   DateTime @db.Time()
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([doctorId, date])
 }
 
 model MedicalRecord {

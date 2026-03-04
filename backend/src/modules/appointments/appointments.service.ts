@@ -1,377 +1,497 @@
 import {
-  Injectable,
-  ConflictException,
-  NotFoundException,
   BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
 } from '@nestjs/common';
+import {
+  AppointmentStatus,
+  AppointmentType,
+  Prisma,
+} from '@prisma/client';
 import { PrismaService } from '@/common/prisma/prisma.service';
-import { getSaoPauloDayRange, toSaoPauloYYYYMMDD } from '@/common/time/br-time';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
+import { QueryAppointmentsDto } from './dto/query-appointments.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
-import { AppointmentStatus, PaymentStatus, Prisma, PrismaClient } from '@prisma/client';
 
-const PAYMENT_REQUIRED_TYPES = new Set(['CONSULTA']);
-
-function normalizeAppointmentType(type: string): string {
-  return type
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-    .toUpperCase();
-}
-
-export function isPaymentRequired(type: string): boolean {
-  return PAYMENT_REQUIRED_TYPES.has(normalizeAppointmentType(type));
-}
-
-const INCLUDE_RELATIONS = {
-  patient: { select: { id: true, name: true, phone: true } },
-  doctor: { select: { id: true, name: true } },
+const APPOINTMENT_TYPE_DURATION: Record<AppointmentType, number> = {
+  FIRST_VISIT: 60,
+  FOLLOW_UP: 30,
+  EXAM: 45,
+  PROCEDURE: 60,
+  URGENT: 30,
 };
 
-const VALID_TRANSITIONS: Record<string, string[]> = {
-  SCHEDULED: ['CONFIRMED', 'IN_PROGRESS', 'CANCELLED'],
-  CONFIRMED: ['IN_PROGRESS', 'CANCELLED', 'NO_SHOW'],
-  IN_PROGRESS: ['COMPLETED'],
+const ACTIVE_STATUSES: AppointmentStatus[] = [
+  AppointmentStatus.SCHEDULED,
+  AppointmentStatus.CONFIRMED,
+  AppointmentStatus.CHECKED_IN,
+  AppointmentStatus.IN_PROGRESS,
+  AppointmentStatus.COMPLETED,
+];
+
+const STATUS_TRANSITIONS: Record<AppointmentStatus, AppointmentStatus[]> = {
+  SCHEDULED: [AppointmentStatus.CONFIRMED, AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW],
+  CONFIRMED: [AppointmentStatus.CHECKED_IN, AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW],
+  CHECKED_IN: [AppointmentStatus.IN_PROGRESS, AppointmentStatus.CANCELLED],
+  IN_PROGRESS: [AppointmentStatus.COMPLETED],
+  COMPLETED: [],
+  CANCELLED: [],
+  NO_SHOW: [],
 };
 
-type PrismaTransaction = Omit<
-  PrismaClient,
-  '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
->;
+type TimeSlot = { startMinutes: number; endMinutes: number };
+
+function parseDateOnly(value: string): string {
+  const match = /^(\d{4}-\d{2}-\d{2})/.exec(value);
+  if (!match) {
+    throw new BadRequestException('Data invalida. Use o formato YYYY-MM-DD.');
+  }
+  return match[1];
+}
+
+function parseHHMM(value: string): number {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value);
+  if (!match) {
+    throw new BadRequestException('Horario invalido. Use o formato HH:mm.');
+  }
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
+function minutesToHHMM(totalMinutes: number): string {
+  const hh = Math.floor(totalMinutes / 60)
+    .toString()
+    .padStart(2, '0');
+  const mm = (totalMinutes % 60).toString().padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
+function minutesToTimeDate(totalMinutes: number): Date {
+  const hours = Math.floor(totalMinutes / 60)
+    .toString()
+    .padStart(2, '0');
+  const minutes = (totalMinutes % 60).toString().padStart(2, '0');
+  return new Date(`1970-01-01T${hours}:${minutes}:00.000Z`);
+}
+
+function timeDateToMinutes(time: Date): number {
+  return time.getUTCHours() * 60 + time.getUTCMinutes();
+}
+
+function toDateOnlyDate(dateOnly: string): Date {
+  return new Date(`${dateOnly}T00:00:00.000Z`);
+}
+
+function toScheduledDate(dateOnly: string, minutes: number): Date {
+  const hh = Math.floor(minutes / 60)
+    .toString()
+    .padStart(2, '0');
+  const mm = (minutes % 60).toString().padStart(2, '0');
+  return new Date(`${dateOnly}T${hh}:${mm}:00.000Z`);
+}
+
+function getDateOnlyFromAppointment(appointment: { date: Date | null; scheduledDate: Date }): string {
+  const base = appointment.date ?? appointment.scheduledDate;
+  return base.toISOString().slice(0, 10);
+}
+
+function getStartMinutesFromAppointment(appointment: {
+  startTime: Date | null;
+  scheduledDate: Date;
+}): number {
+  if (appointment.startTime) {
+    return timeDateToMinutes(appointment.startTime);
+  }
+  return appointment.scheduledDate.getUTCHours() * 60 + appointment.scheduledDate.getUTCMinutes();
+}
+
+function getEndMinutesFromAppointment(appointment: {
+  endTime: Date | null;
+  duration: number;
+  startTime: Date | null;
+  scheduledDate: Date;
+}): number {
+  if (appointment.endTime) {
+    return timeDateToMinutes(appointment.endTime);
+  }
+  return getStartMinutesFromAppointment(appointment) + appointment.duration;
+}
+
+function slotOverlaps(a: TimeSlot, b: TimeSlot): boolean {
+  return a.startMinutes < b.endMinutes && a.endMinutes > b.startMinutes;
+}
 
 @Injectable()
 export class AppointmentsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  private async assertNoConflict(
+  private async validateDoctorSchedule(
     doctorId: string,
-    scheduledDate: Date,
-    duration: number,
-    excludeId?: string,
-    tx: PrismaTransaction = this.prisma,
+    dateOnly: string,
+    newSlot: TimeSlot,
   ) {
-    const saoPauloDay = toSaoPauloYYYYMMDD(scheduledDate);
-    const { startUtc, endUtc } = getSaoPauloDayRange(saoPauloDay);
-
-    const existingAppointments = await tx.appointment.findMany({
-      where: {
-        doctorId,
-        scheduledDate: { gte: startUtc, lt: endUtc },
-        status: { notIn: ['CANCELLED', 'NO_SHOW'] },
-        ...(excludeId ? { id: { not: excludeId } } : {}),
-      },
+    const dayOfWeek = toDateOnlyDate(dateOnly).getUTCDay();
+    const schedule = await this.prisma.doctorSchedule.findUnique({
+      where: { doctorId_dayOfWeek: { doctorId, dayOfWeek } },
     });
 
-    const newStart = scheduledDate.getTime();
-    const newEnd = newStart + duration * 60000;
+    if (!schedule || !schedule.isActive) {
+      throw new ConflictException('Medico sem agenda ativa para este dia.');
+    }
 
-    for (const existing of existingAppointments) {
-      const existStart = existing.scheduledDate.getTime();
-      const existEnd = existStart + existing.duration * 60000;
+    const scheduleStart = parseHHMM(schedule.startTime);
+    const scheduleEnd = parseHHMM(schedule.endTime);
+    if (newSlot.startMinutes < scheduleStart || newSlot.endMinutes > scheduleEnd) {
+      throw new ConflictException('Horario fora da jornada configurada do medico.');
+    }
+  }
 
-      if (newStart < existEnd && newEnd > existStart) {
-        throw new ConflictException(
-          'Conflito de horário: já existe um agendamento neste período para este médico',
-        );
+  private async validateNoOverlap(
+    doctorId: string,
+    dateOnly: string,
+    newSlot: TimeSlot,
+    excludeAppointmentId?: string,
+  ) {
+    const where: Prisma.AppointmentWhereInput = {
+      doctorId,
+      date: toDateOnlyDate(dateOnly),
+      status: { notIn: [AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW] },
+      ...(excludeAppointmentId ? { id: { not: excludeAppointmentId } } : {}),
+    };
+
+    const existing = await this.prisma.appointment.findMany({
+      where,
+      select: { id: true, startTime: true, endTime: true, scheduledDate: true, duration: true },
+    });
+
+    for (const appointment of existing) {
+      const slot: TimeSlot = {
+        startMinutes: getStartMinutesFromAppointment(appointment),
+        endMinutes: getEndMinutesFromAppointment(appointment),
+      };
+      if (slotOverlaps(slot, newSlot)) {
+        throw new ConflictException('Conflito de horario: medico ja possui agendamento neste periodo.');
       }
     }
   }
 
-  async create(dto: CreateAppointmentDto) {
-    const scheduledDate = new Date(dto.scheduledDate);
-    const duration = dto.duration || 30;
+  private async validateNoBlockedSlot(
+    doctorId: string,
+    dateOnly: string,
+    newSlot: TimeSlot,
+  ) {
+    const blocked = await this.prisma.doctorBlockedSlot.findMany({
+      where: { doctorId, date: toDateOnlyDate(dateOnly) },
+      select: { id: true, startTime: true, endTime: true },
+    });
+
+    for (const item of blocked) {
+      const slot: TimeSlot = {
+        startMinutes: timeDateToMinutes(item.startTime),
+        endMinutes: timeDateToMinutes(item.endTime),
+      };
+      if (slotOverlaps(slot, newSlot)) {
+        throw new ConflictException('Horario indisponivel: bloqueio na agenda do medico.');
+      }
+    }
+  }
+
+  private getSlotByType(type: AppointmentType, startTime: string): TimeSlot {
+    const startMinutes = parseHHMM(startTime);
+    const duration = APPOINTMENT_TYPE_DURATION[type];
+    return { startMinutes, endMinutes: startMinutes + duration };
+  }
+
+  private ensureValidTransition(current: AppointmentStatus, next: AppointmentStatus) {
+    const allowed = STATUS_TRANSITIONS[current] ?? [];
+    if (!allowed.includes(next)) {
+      throw new BadRequestException(`Transicao de ${current} para ${next} nao permitida.`);
+    }
+  }
+
+  async create(dto: CreateAppointmentDto, createdById: string) {
+    const dateOnly = parseDateOnly(dto.date);
+    const slot = this.getSlotByType(dto.type, dto.startTime);
+
+    await this.validateDoctorSchedule(dto.doctorId, dateOnly, slot);
+    await this.validateNoOverlap(dto.doctorId, dateOnly, slot);
+    await this.validateNoBlockedSlot(dto.doctorId, dateOnly, slot);
+
+    const data: Prisma.AppointmentCreateInput = {
+      patient: { connect: { id: dto.patientId } },
+      doctor: { connect: { id: dto.doctorId } },
+      createdBy: { connect: { id: createdById } },
+      type: dto.type,
+      status: AppointmentStatus.SCHEDULED,
+      date: toDateOnlyDate(dateOnly),
+      startTime: minutesToTimeDate(slot.startMinutes),
+      endTime: minutesToTimeDate(slot.endMinutes),
+      scheduledDate: toScheduledDate(dateOnly, slot.startMinutes),
+      duration: APPOINTMENT_TYPE_DURATION[dto.type],
+      notes: dto.notes,
+    };
 
     try {
-      return await this.prisma.$transaction(async (tx) => {
-        await this.assertNoConflict(dto.doctorId, scheduledDate, duration, undefined, tx);
-
-        return tx.appointment.create({
-          data: {
-            patientId: dto.patientId,
-            doctorId: dto.doctorId,
-            scheduledDate,
-            duration,
-            type: dto.type,
-            notes: dto.notes,
-          },
-          include: INCLUDE_RELATIONS,
-        });
-      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+      return await this.prisma.appointment.create({
+        data,
+        include: {
+          patient: { select: { id: true, name: true } },
+          doctor: { select: { id: true, name: true } },
+          createdBy: { select: { id: true, name: true } },
+        },
+      });
     } catch (error) {
-      if (error instanceof ConflictException) throw error;
-      if (error.code === 'P2034') {
-        throw new ConflictException(
-          'Conflito de horário: tente novamente',
-        );
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('Conflito de horario: slot ja ocupado para este medico.');
       }
       throw error;
     }
   }
 
-  async findAll(startDate?: string, endDate?: string, doctorId?: string) {
-    const where: any = {};
+  async findAll(query: QueryAppointmentsDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const skip = (page - 1) * limit;
 
-    if (startDate && endDate) {
-      const isYmdRange =
-        /^\d{4}-\d{2}-\d{2}$/.test(startDate) && /^\d{4}-\d{2}-\d{2}$/.test(endDate);
+    const where: Prisma.AppointmentWhereInput = {};
+    if (query.doctorId) where.doctorId = query.doctorId;
+    if (query.patientId) where.patientId = query.patientId;
+    if (query.status) where.status = query.status;
 
-      if (isYmdRange) {
-        const { startUtc } = getSaoPauloDayRange(startDate);
-        const { endUtc } = getSaoPauloDayRange(endDate);
-        where.scheduledDate = {
-          gte: startUtc,
-          lt: endUtc,
-        };
-      } else {
-        where.scheduledDate = {
-          gte: new Date(startDate),
-          lte: new Date(endDate),
-        };
-      }
-    }
-    if (doctorId) {
-      where.doctorId = doctorId;
+    if (query.date) {
+      where.date = toDateOnlyDate(parseDateOnly(query.date));
+    } else if (query.startDate || query.endDate) {
+      const dateFilter: Prisma.DateTimeNullableFilter = {};
+      if (query.startDate) dateFilter.gte = toDateOnlyDate(parseDateOnly(query.startDate));
+      if (query.endDate) dateFilter.lte = toDateOnlyDate(parseDateOnly(query.endDate));
+      where.date = dateFilter;
     }
 
-    return this.prisma.appointment.findMany({
-      where,
-      include: INCLUDE_RELATIONS,
-      orderBy: { scheduledDate: 'asc' },
-    });
-  }
-
-  async findByDay(date: string, doctorId?: string, status?: AppointmentStatus) {
-    const { startUtc, endUtc } = getSaoPauloDayRange(date);
-
-    const where: any = {
-      scheduledDate: { gte: startUtc, lt: endUtc },
-    };
-    if (doctorId) where.doctorId = doctorId;
-    if (status) where.status = status;
-
-    const appointments = await this.prisma.appointment.findMany({
-      where,
-      include: {
-        ...INCLUDE_RELATIONS,
-        patient: { select: { id: true, name: true, phone: true, birthDate: true } },
-        medicalRecord: { select: { id: true, status: true } },
-        payment: { select: { amount: true, status: true } },
-      },
-      orderBy: { scheduledDate: 'asc' },
-    });
-
-    const now = new Date();
-    const nowPlus60 = new Date(now.getTime() + 60 * 60_000);
-    const nowMinus90 = new Date(now.getTime() - 90 * 60_000);
-
-    // KPIs
-    const kpis = {
-      total: appointments.length,
-      scheduled: 0,
-      confirmed: 0,
-      inProgress: 0,
-      completed: 0,
-      noShow: 0,
-      cancelled: 0,
-      remaining: 0,
-      receivedCents: 0,
-      pendingCents: 0,
-    };
-    for (const apt of appointments) {
-      switch (apt.status) {
-        case AppointmentStatus.SCHEDULED: kpis.scheduled++; break;
-        case AppointmentStatus.CONFIRMED: kpis.confirmed++; break;
-        case AppointmentStatus.IN_PROGRESS: kpis.inProgress++; break;
-        case AppointmentStatus.COMPLETED: kpis.completed++; break;
-        case AppointmentStatus.NO_SHOW: kpis.noShow++; break;
-        case AppointmentStatus.CANCELLED: kpis.cancelled++; break;
-      }
-
-      if (apt.payment?.status === PaymentStatus.PAID) {
-        kpis.receivedCents += apt.payment.amount;
-      }
-      if (apt.payment?.status === PaymentStatus.PENDING) {
-        kpis.pendingCents += apt.payment.amount;
-      }
-    }
-    kpis.remaining = kpis.total - kpis.completed - kpis.cancelled - kpis.noShow;
-
-    // Rows with flags
-    const rows = appointments.map((apt) => {
-      const startTime = apt.scheduledDate;
-      const endTime = new Date(startTime.getTime() + apt.duration * 60_000);
-
-      // missingSoap: IN_PROGRESS with no record, OR COMPLETED with no FINAL record
-      const missingSoap =
-        (apt.status === AppointmentStatus.IN_PROGRESS && !apt.medicalRecord) ||
-        (apt.status === AppointmentStatus.COMPLETED &&
-          (!apt.medicalRecord || apt.medicalRecord.status !== 'FINAL'));
-
-      // upcomingUnconfirmed: starts within 60 min AND status is SCHEDULED
-      const upcomingUnconfirmed =
-        apt.status === AppointmentStatus.SCHEDULED &&
-        startTime >= now &&
-        startTime <= nowPlus60;
-
-      // overdueInProgress: IN_PROGRESS and started > 90 min ago
-      const overdueInProgress =
-        apt.status === AppointmentStatus.IN_PROGRESS &&
-        startTime < nowMinus90;
-
-      return {
-        id: apt.id,
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
-        durationMinutes: apt.duration,
-        status: apt.status,
-        type: apt.type,
-        notes: apt.notes,
-        patient: apt.patient,
-        doctor: apt.doctor,
-        flags: {
-          missingSoap,
-          upcomingUnconfirmed,
-          overdueInProgress,
+    const [items, total] = await Promise.all([
+      this.prisma.appointment.findMany({
+        where,
+        include: {
+          patient: { select: { id: true, name: true } },
+          doctor: { select: { id: true, name: true } },
         },
-      };
-    });
+        orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
+        skip,
+        take: limit,
+      }),
+      this.prisma.appointment.count({ where }),
+    ]);
 
     return {
-      meta: { date, timezone: 'America/Sao_Paulo' },
-      kpis,
-      rows,
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit) || 1,
+      data: items,
     };
   }
 
   async findOne(id: string) {
     const appointment = await this.prisma.appointment.findUnique({
       where: { id },
-      include: INCLUDE_RELATIONS,
+      include: {
+        patient: { select: { id: true, name: true, phone: true } },
+        doctor: { select: { id: true, name: true } },
+        createdBy: { select: { id: true, name: true } },
+      },
     });
 
     if (!appointment) {
-      throw new NotFoundException('Agendamento não encontrado');
+      throw new NotFoundException('Agendamento nao encontrado.');
     }
 
     return appointment;
   }
 
   async update(id: string, dto: UpdateAppointmentDto) {
-    const existing = await this.prisma.appointment.findUnique({ where: { id } });
-    if (!existing) {
-      throw new NotFoundException('Agendamento não encontrado');
+    const current = await this.prisma.appointment.findUnique({ where: { id } });
+    if (!current) {
+      throw new NotFoundException('Agendamento nao encontrado.');
     }
 
-    const scheduledDate = dto.scheduledDate
-      ? new Date(dto.scheduledDate)
-      : existing.scheduledDate;
-    const duration = dto.duration ?? existing.duration;
-    const doctorId = dto.doctorId ?? existing.doctorId;
+    const doctorId = dto.doctorId ?? current.doctorId;
+    const type = dto.type ?? current.type;
+    const dateOnly = dto.date ? parseDateOnly(dto.date) : getDateOnlyFromAppointment(current);
+    const currentStart = minutesToHHMM(getStartMinutesFromAppointment(current));
+    const startTime = dto.startTime ?? currentStart;
+    const slot = this.getSlotByType(type, startTime);
 
-    if (dto.scheduledDate || dto.duration || dto.doctorId) {
-      try {
-        return await this.prisma.$transaction(async (tx) => {
-          await this.assertNoConflict(doctorId, scheduledDate, duration, id, tx);
+    if (dto.doctorId || dto.type || dto.date || dto.startTime) {
+      await this.validateDoctorSchedule(doctorId, dateOnly, slot);
+      await this.validateNoOverlap(doctorId, dateOnly, slot, id);
+      await this.validateNoBlockedSlot(doctorId, dateOnly, slot);
+    }
 
-          return tx.appointment.update({
-            where: { id },
-            data: {
-              ...(dto.patientId && { patientId: dto.patientId }),
-              ...(dto.doctorId && { doctorId: dto.doctorId }),
-              ...(dto.scheduledDate && { scheduledDate }),
-              ...(dto.duration && { duration }),
-              ...(dto.type && { type: dto.type }),
-              ...(dto.notes !== undefined && { notes: dto.notes }),
-            },
-            include: INCLUDE_RELATIONS,
-          });
-        }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-      } catch (error) {
-        if (error instanceof ConflictException) throw error;
-        if (error instanceof NotFoundException) throw error;
-        if (error.code === 'P2034') {
-          throw new ConflictException(
-            'Conflito de horário: tente novamente',
-          );
-        }
-        throw error;
-      }
+    if (dto.status && dto.status !== current.status) {
+      this.ensureValidTransition(current.status, dto.status);
+    }
+
+    if (dto.status === AppointmentStatus.CANCELLED && !dto.cancelReason) {
+      throw new BadRequestException('Informe o motivo do cancelamento.');
     }
 
     return this.prisma.appointment.update({
       where: { id },
       data: {
-        ...(dto.patientId && { patientId: dto.patientId }),
-        ...(dto.type && { type: dto.type }),
-        ...(dto.notes !== undefined && { notes: dto.notes }),
+        ...(dto.patientId ? { patientId: dto.patientId } : {}),
+        ...(dto.doctorId ? { doctorId } : {}),
+        ...(dto.type ? { type } : {}),
+        ...(dto.notes !== undefined ? { notes: dto.notes } : {}),
+        ...(dto.cancelReason !== undefined ? { cancelReason: dto.cancelReason } : {}),
+        ...(dto.status ? { status: dto.status } : {}),
+        ...(dto.date || dto.startTime || dto.type
+          ? {
+              date: toDateOnlyDate(dateOnly),
+              startTime: minutesToTimeDate(slot.startMinutes),
+              endTime: minutesToTimeDate(slot.endMinutes),
+              scheduledDate: toScheduledDate(dateOnly, slot.startMinutes),
+              duration: APPOINTMENT_TYPE_DURATION[type],
+            }
+          : {}),
       },
-      include: INCLUDE_RELATIONS,
+      include: {
+        patient: { select: { id: true, name: true } },
+        doctor: { select: { id: true, name: true } },
+      },
     });
   }
 
-  async updateStatus(id: string, newStatus: AppointmentStatus) {
-    const appointment = await this.prisma.appointment.findUnique({ where: { id } });
-    if (!appointment) {
-      throw new NotFoundException('Agendamento não encontrado');
+  async updateStatus(id: string, status: AppointmentStatus, cancelReason?: string) {
+    const current = await this.prisma.appointment.findUnique({ where: { id } });
+    if (!current) {
+      throw new NotFoundException('Agendamento nao encontrado.');
     }
 
-    const allowed = VALID_TRANSITIONS[appointment.status] || [];
-    if (!allowed.includes(newStatus)) {
-      throw new BadRequestException(
-        `Transição de ${appointment.status} para ${newStatus} não permitida`,
-      );
+    this.ensureValidTransition(current.status, status);
+    if (status === AppointmentStatus.CANCELLED && !cancelReason) {
+      throw new BadRequestException('Informe o motivo do cancelamento.');
     }
 
     return this.prisma.appointment.update({
       where: { id },
-      data: { status: newStatus },
-      include: INCLUDE_RELATIONS,
-    });
-  }
-
-  async startEncounter(id: string) {
-    return this.updateStatus(id, AppointmentStatus.IN_PROGRESS);
-  }
-
-  async completeEncounter(id: string) {
-    const appointment = await this.prisma.appointment.findUnique({
-      where: { id },
-      include: { medicalRecord: true },
-    });
-
-    if (!appointment) {
-      throw new NotFoundException('Agendamento não encontrado');
-    }
-
-    if (!appointment.medicalRecord || appointment.medicalRecord.status !== 'FINAL') {
-      throw new BadRequestException(
-        'Finalize o prontuário antes de concluir o atendimento',
-      );
-    }
-
-    return this.updateStatus(id, AppointmentStatus.COMPLETED);
-  }
-
-  async findMedicalRecord(appointmentId: string) {
-    const appointment = await this.prisma.appointment.findUnique({
-      where: { id: appointmentId },
-    });
-
-    if (!appointment) {
-      throw new NotFoundException('Agendamento não encontrado');
-    }
-
-    return this.prisma.medicalRecord.findUnique({
-      where: { appointmentId },
+      data: {
+        status,
+        ...(status === AppointmentStatus.CANCELLED ? { cancelReason } : {}),
+      },
       include: {
         patient: { select: { id: true, name: true } },
         doctor: { select: { id: true, name: true } },
-        finalizedBy: { select: { id: true, name: true } },
-        appointment: { select: { id: true, scheduledDate: true, type: true, status: true } },
       },
     });
   }
+
+  async getAvailableSlots(doctorId: string, date: string) {
+    const dateOnly = parseDateOnly(date);
+    const dayOfWeek = toDateOnlyDate(dateOnly).getUTCDay();
+    const schedule = await this.prisma.doctorSchedule.findUnique({
+      where: { doctorId_dayOfWeek: { doctorId, dayOfWeek } },
+    });
+
+    if (!schedule || !schedule.isActive) {
+      return [];
+    }
+
+    const scheduleStart = parseHHMM(schedule.startTime);
+    const scheduleEnd = parseHHMM(schedule.endTime);
+    const slotMinutes = schedule.slotMinutes;
+    const possibleSlots: TimeSlot[] = [];
+
+    for (let cursor = scheduleStart; cursor + slotMinutes <= scheduleEnd; cursor += slotMinutes) {
+      possibleSlots.push({ startMinutes: cursor, endMinutes: cursor + slotMinutes });
+    }
+
+    const [appointments, blocked] = await Promise.all([
+      this.prisma.appointment.findMany({
+        where: {
+          doctorId,
+          date: toDateOnlyDate(dateOnly),
+          status: { in: ACTIVE_STATUSES },
+        },
+        select: { startTime: true, endTime: true },
+      }),
+      this.prisma.doctorBlockedSlot.findMany({
+        where: { doctorId, date: toDateOnlyDate(dateOnly) },
+        select: { startTime: true, endTime: true },
+      }),
+    ]);
+
+    const occupied: TimeSlot[] = appointments
+      .filter((a) => Boolean(a.startTime && a.endTime))
+      .map((a) => ({
+        startMinutes: timeDateToMinutes(a.startTime!),
+        endMinutes: timeDateToMinutes(a.endTime!),
+      }));
+    const blockedSlots: TimeSlot[] = blocked.map((b) => ({
+      startMinutes: timeDateToMinutes(b.startTime),
+      endMinutes: timeDateToMinutes(b.endTime),
+    }));
+
+    return possibleSlots
+      .filter((slot) => !occupied.some((busy) => slotOverlaps(slot, busy)))
+      .filter((slot) => !blockedSlots.some((busy) => slotOverlaps(slot, busy)))
+      .map((slot) => ({
+        startTime: minutesToHHMM(slot.startMinutes),
+        endTime: minutesToHHMM(slot.endMinutes),
+      }));
+  }
+
+  async getDailyOverview(date: string) {
+    const dateOnly = parseDateOnly(date);
+    const rows = await this.prisma.appointment.findMany({
+      where: { date: toDateOnlyDate(dateOnly) },
+      include: {
+        patient: { select: { id: true, name: true } },
+        doctor: { select: { id: true, name: true } },
+      },
+      orderBy: [{ doctor: { name: 'asc' } }, { startTime: 'asc' }],
+    });
+
+    const grouped = new Map<
+      string,
+      {
+        doctor: { id: string; name: string };
+        counts: Record<AppointmentStatus, number>;
+        appointments: typeof rows;
+      }
+    >();
+
+    for (const row of rows) {
+      const key = row.doctorId;
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          doctor: { id: row.doctor.id, name: row.doctor.name },
+          counts: {
+            SCHEDULED: 0,
+            CONFIRMED: 0,
+            CHECKED_IN: 0,
+            IN_PROGRESS: 0,
+            COMPLETED: 0,
+            CANCELLED: 0,
+            NO_SHOW: 0,
+          },
+          appointments: [],
+        });
+      }
+      const entry = grouped.get(key)!;
+      entry.counts[row.status] += 1;
+      entry.appointments.push(row);
+    }
+
+    return {
+      date: dateOnly,
+      doctors: Array.from(grouped.values()),
+    };
+  }
+
+  async softDelete(id: string) {
+    await this.findOne(id);
+    return this.prisma.appointment.update({
+      where: { id },
+      data: { status: AppointmentStatus.CANCELLED },
+    });
+  }
 }
-
-
