@@ -18,8 +18,6 @@ import { NewAppointmentModal } from '@/components/appointments/NewAppointmentMod
 import { AppointmentDetailPanel } from '@/components/appointments/AppointmentDetailPanel';
 import type { AppointmentListItem, AppointmentStatus } from '@/lib/api/appointments';
 import { getApiErrorMessage } from '@/lib/api/error-utils';
-import '@fullcalendar/daygrid/index.css';
-import '@fullcalendar/timegrid/index.css';
 
 const STATUS_STYLE: Record<
   AppointmentStatus,
