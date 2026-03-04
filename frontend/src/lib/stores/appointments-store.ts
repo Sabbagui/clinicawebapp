@@ -56,7 +56,7 @@ export const useAppointmentsStore = create<AppointmentsStoreState>((set, get) =>
         date: selectedDate,
         doctorId: selectedDoctorId || undefined,
         page: 1,
-        limit: 200,
+        limit: 100,
         ...filters,
       });
       set({ appointments: response.data, isLoading: false });

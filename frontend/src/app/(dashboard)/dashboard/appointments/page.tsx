@@ -104,7 +104,7 @@ export default function AppointmentsPage() {
       date: selectedDate,
       doctorId: selectedDoctorId || undefined,
       page: 1,
-      limit: 200,
+      limit: 100,
     });
   }, [selectedDate, selectedDoctorId, fetchAppointments]);
 
@@ -138,7 +138,7 @@ export default function AppointmentsPage() {
       date: selectedDate,
       doctorId: selectedDoctorId || undefined,
       page: 1,
-      limit: 200,
+      limit: 100,
     });
   };
 
