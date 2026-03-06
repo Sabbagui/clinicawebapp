@@ -9,7 +9,7 @@ export class UpdateAppointmentStatusDto {
   @IsEnum(AppointmentStatus)
   status: AppointmentStatus;
 
-  @ApiPropertyOptional({ example: 'Paciente nao compareceu ou solicitou cancelamento' })
+  @ApiPropertyOptional({ example: 'Paciente não compareceu ou solicitou cancelamento' })
   @IsOptional()
   @ValidateIf((dto: UpdateAppointmentStatusDto) => dto.status === AppointmentStatus.CANCELLED)
   @IsString()

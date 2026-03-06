@@ -22,7 +22,7 @@ const ACTIVE_APPOINTMENT_STATUSES: AppointmentStatus[] = [
 function parseDateOnly(value: string): string {
   const match = /^(\d{4}-\d{2}-\d{2})/.exec(value);
   if (!match) {
-    throw new BadRequestException('Data invalida. Use o formato YYYY-MM-DD.');
+    throw new BadRequestException('Data inválida. Use o formato YYYY-MM-DD.');
   }
   return match[1];
 }
@@ -30,7 +30,7 @@ function parseDateOnly(value: string): string {
 function parseHHMM(value: string): number {
   const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value);
   if (!match) {
-    throw new BadRequestException('Horario invalido. Use o formato HH:mm.');
+    throw new BadRequestException('Horário inválido. Use o formato HH:mm.');
   }
   return Number(match[1]) * 60 + Number(match[2]);
 }
@@ -59,7 +59,7 @@ export class DoctorScheduleService {
     const start = parseHHMM(entry.startTime);
     const end = parseHHMM(entry.endTime);
     if (start >= end) {
-      throw new BadRequestException(`Intervalo invalido para o dia ${entry.dayOfWeek}.`);
+      throw new BadRequestException(`Intervalo inválido para o dia ${entry.dayOfWeek}.`);
     }
   }
 
@@ -167,7 +167,7 @@ export class DoctorScheduleService {
     const end = parseHHMM(dto.endTime);
 
     if (start >= end) {
-      throw new BadRequestException('Horario de bloqueio invalido.');
+      throw new BadRequestException('Horário de bloqueio inválido.');
     }
 
     const appointmentConflict = await this.prisma.appointment.findFirst({
@@ -201,7 +201,7 @@ export class DoctorScheduleService {
       return await this.prisma.doctorBlockedSlot.delete({ where: { id } });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-        throw new NotFoundException('Bloqueio nao encontrado.');
+        throw new NotFoundException('Bloqueio não encontrado.');
       }
       throw error;
     }

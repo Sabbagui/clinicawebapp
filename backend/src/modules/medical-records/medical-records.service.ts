@@ -35,22 +35,39 @@ export class MedicalRecordsService {
       throw new ForbiddenException(ACCESS_FORBIDDEN_MESSAGE);
     }
 
-    const appointment = await this.prisma.appointment.findUnique({
-      where: { id: dto.appointmentId },
-      select: { id: true, doctorId: true },
-    });
-    if (!appointment) {
-      throw new NotFoundException('Agendamento nao encontrado');
+    if (dto.appointmentId) {
+      const appointment = await this.prisma.appointment.findUnique({
+        where: { id: dto.appointmentId },
+        select: { id: true, doctorId: true, patientId: true },
+      });
+      if (!appointment) {
+        throw new NotFoundException('Agendamento não encontrado.');
+      }
+      dto.patientId = dto.patientId || appointment.patientId;
+      dto.doctorId = dto.doctorId || appointment.doctorId;
+
+      if (isClinician(user) && appointment.doctorId !== user.id) {
+        throw new ForbiddenException(ACCESS_FORBIDDEN_MESSAGE);
+      }
     }
-    if (isClinician(user) && appointment.doctorId !== user.id) {
+
+    if (!dto.patientId || !dto.doctorId) {
+      throw new BadRequestException(
+        'patientId e doctorId são obrigatórios quando appointmentId não é fornecido.',
+      );
+    }
+
+    if (isClinician(user) && dto.doctorId !== user.id) {
       throw new ForbiddenException(ACCESS_FORBIDDEN_MESSAGE);
     }
 
-    const existing = await this.prisma.medicalRecord.findUnique({
-      where: { appointmentId: dto.appointmentId },
-    });
-    if (existing) {
-      throw new ConflictException('Este agendamento ja possui um prontuario');
+    if (dto.appointmentId) {
+      const existing = await this.prisma.medicalRecord.findUnique({
+        where: { appointmentId: dto.appointmentId },
+      });
+      if (existing) {
+        throw new ConflictException('Este agendamento já possui um prontuário');
+      }
     }
 
     return this.prisma.medicalRecord.create({
@@ -88,7 +105,7 @@ export class MedicalRecordsService {
       include: INCLUDE_RELATIONS,
     });
     if (!record) {
-      throw new NotFoundException('Prontuario nao encontrado');
+      throw new NotFoundException('Prontuário não encontrado');
     }
 
     assertMedicalRecordAccess(user, record);
@@ -101,12 +118,12 @@ export class MedicalRecordsService {
       include: { appointment: { select: { doctorId: true } } },
     });
     if (!record) {
-      throw new NotFoundException('Prontuario nao encontrado');
+      throw new NotFoundException('Prontuário não encontrado');
     }
 
     assertMedicalRecordAccess(user, record);
     if (record.status === MedicalRecordStatus.FINAL) {
-      throw new BadRequestException('Nao e possivel editar um prontuario finalizado');
+      throw new BadRequestException('Não é possível editar um prontuário finalizado');
     }
 
     return this.prisma.medicalRecord.update({
@@ -127,12 +144,12 @@ export class MedicalRecordsService {
       include: { appointment: { select: { doctorId: true } } },
     });
     if (!record) {
-      throw new NotFoundException('Prontuario nao encontrado');
+      throw new NotFoundException('Prontuário não encontrado');
     }
 
     assertMedicalRecordAccess(user, record);
     if (record.status === MedicalRecordStatus.FINAL) {
-      throw new BadRequestException('Prontuario ja esta finalizado');
+      throw new BadRequestException('Prontuário já está finalizado');
     }
 
     return this.prisma.medicalRecord.update({

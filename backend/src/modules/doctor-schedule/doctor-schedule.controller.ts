@@ -33,7 +33,7 @@ export class DoctorScheduleController {
 
   @Get(':doctorId')
   @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.RECEPTIONIST, UserRole.NURSE)
-  @ApiOperation({ summary: 'Buscar agenda semanal do medico' })
+  @ApiOperation({ summary: 'Buscar agenda semanal do médico' })
   @ApiResponse({ status: 200, description: 'Agenda semanal' })
   getWeeklySchedule(@Param('doctorId') doctorId: string) {
     return this.doctorScheduleService.getWeeklySchedule(doctorId);
@@ -49,18 +49,18 @@ export class DoctorScheduleController {
     @Request() req,
   ) {
     if (req.user.role === UserRole.DOCTOR && req.user.id !== doctorId) {
-      throw new ForbiddenException('Sem permissao para atualizar agenda de outro medico.');
+      throw new ForbiddenException('Sem permissão para atualizar agenda de outro médico.');
     }
     return this.doctorScheduleService.upsertWeeklySchedule(doctorId, dto);
   }
 
   @Post('blocked-slots')
   @Roles(UserRole.ADMIN, UserRole.DOCTOR)
-  @ApiOperation({ summary: 'Criar bloqueio de agenda do medico' })
+  @ApiOperation({ summary: 'Criar bloqueio de agenda do médico' })
   @ApiResponse({ status: 201, description: 'Bloqueio criado' })
   createBlockedSlot(@Body() dto: CreateBlockedSlotDto, @Request() req) {
     if (req.user.role === UserRole.DOCTOR && req.user.id !== dto.doctorId) {
-      throw new ForbiddenException('Sem permissao para criar bloqueio para outro medico.');
+      throw new ForbiddenException('Sem permissão para criar bloqueio para outro médico.');
     }
     return this.doctorScheduleService.createBlockedSlot(dto);
   }

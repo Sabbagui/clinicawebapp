@@ -68,7 +68,7 @@ describe('PaymentsService', () => {
     await expect(service.refund('pay-1')).rejects.toThrow(ConflictException);
   });
 
-  it('marks PENDING payment as PAID using provided paidDate in Sao Paulo day', async () => {
+  it('marks PENDING payment as PAID using provided paidDate in São Paulo day', async () => {
     mockPrisma.payment.findUnique.mockResolvedValue({
       id: 'pay-1',
       status: PaymentStatus.PENDING,

@@ -32,7 +32,7 @@ import {
 
 const ROLE_CONFIG: Record<string, { label: string; color: string }> = {
   ADMIN: { label: 'Administrador', color: 'bg-purple-100 text-purple-700' },
-  DOCTOR: { label: 'Médico(a)', color: 'bg-blue-100 text-blue-700' },
+  DOCTOR: { label: 'MÃ©dico(a)', color: 'bg-blue-100 text-blue-700' },
   NURSE: { label: 'Enfermeiro(a)', color: 'bg-green-100 text-green-700' },
   RECEPTIONIST: { label: 'Recepcionista', color: 'bg-amber-100 text-amber-700' },
 };
@@ -40,7 +40,7 @@ const ROLE_CONFIG: Record<string, { label: string; color: string }> = {
 const ROLE_FILTER_OPTIONS = [
   { value: '', label: 'Todos os cargos' },
   { value: 'ADMIN', label: 'Administrador' },
-  { value: 'DOCTOR', label: 'Médico(a)' },
+  { value: 'DOCTOR', label: 'MÃ©dico(a)' },
   { value: 'NURSE', label: 'Enfermeiro(a)' },
   { value: 'RECEPTIONIST', label: 'Recepcionista' },
 ];
@@ -61,7 +61,7 @@ function extractApiError(err: unknown): string {
     if (Array.isArray(msg)) return msg[0];
     if (msg) return msg;
   }
-  return 'Erro ao executar ação';
+  return 'Erro ao executar aÃ§Ã£o';
 }
 
 export default function StaffPage() {
@@ -141,7 +141,7 @@ export default function StaffPage() {
         <div>
           <h1 className="text-3xl font-bold text-primary">Equipe</h1>
           <p className="text-muted-foreground mt-1">
-            Gerencie os membros da equipe da clínica
+            Gerencie os membros da equipe da clÃ­nica
           </p>
         </div>
         {isAdmin && (
@@ -230,7 +230,7 @@ export default function StaffPage() {
                 </th>
                 {isAdmin && (
                   <th className="text-right px-4 py-3 text-sm font-medium text-muted-foreground">
-                    Ações
+                    AÃ§Ãµes
                   </th>
                 )}
               </tr>
@@ -372,16 +372,16 @@ function StaffFormDialog({
   const validate = (): boolean => {
     const errors: Record<string, string> = {};
     if (!name.trim() || name.trim().length < 2) {
-      errors.name = 'Nome deve ter no mínimo 2 caracteres';
+      errors.name = 'Nome deve ter no mÃ­nimo 2 caracteres';
     }
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      errors.email = 'Email inválido';
+      errors.email = 'Email invÃ¡lido';
     }
     if (!isEdit && (!password || password.length < 6)) {
-      errors.password = 'Senha deve ter no mínimo 6 caracteres';
+      errors.password = 'Senha deve ter no mÃ­nimo 6 caracteres';
     }
     if (!role) {
-      errors.role = 'Cargo é obrigatório';
+      errors.role = 'Cargo Ã© obrigatÃ³rio';
     }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -437,7 +437,7 @@ function StaffFormDialog({
             id="staff-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Dr. João Silva"
+            placeholder="Dr. JoÃ£o Silva"
             error={fieldErrors.name}
           />
         </div>
@@ -449,7 +449,7 @@ function StaffFormDialog({
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="joao@clinica.com"
+            placeholder="joao@clínica.com"
             error={fieldErrors.email}
           />
         </div>
@@ -462,7 +462,7 @@ function StaffFormDialog({
             onChange={(e) => setRole(e.target.value)}
             error={fieldErrors.role}
           >
-            <option value="DOCTOR">Médico(a)</option>
+            <option value="DOCTOR">MÃ©dico(a)</option>
             <option value="NURSE">Enfermeiro(a)</option>
             <option value="RECEPTIONIST">Recepcionista</option>
             <option value="ADMIN">Administrador</option>
@@ -477,7 +477,7 @@ function StaffFormDialog({
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Mínimo 6 caracteres"
+              placeholder="MÃ­nimo 6 caracteres"
               error={fieldErrors.password}
             />
           </div>
@@ -491,7 +491,7 @@ function StaffFormDialog({
             {isSubmitting
               ? 'Salvando...'
               : isEdit
-                ? 'Salvar Alterações'
+                ? 'Salvar AlteraÃ§Ãµes'
                 : 'Cadastrar'}
           </Button>
         </div>
@@ -531,10 +531,10 @@ function PasswordResetDialog({
   const validate = (): boolean => {
     const errors: Record<string, string> = {};
     if (!password || password.length < 6) {
-      errors.password = 'Senha deve ter no mínimo 6 caracteres';
+      errors.password = 'Senha deve ter no mÃ­nimo 6 caracteres';
     }
     if (password !== confirmPassword) {
-      errors.confirmPassword = 'As senhas não coincidem';
+      errors.confirmPassword = 'As senhas nÃ£o coincidem';
     }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -581,7 +581,7 @@ function PasswordResetDialog({
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Mínimo 6 caracteres"
+              placeholder="MÃ­nimo 6 caracteres"
               error={fieldErrors.password}
             />
           </div>

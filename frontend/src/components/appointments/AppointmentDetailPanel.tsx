@@ -26,9 +26,9 @@ function statusLabel(status: AppointmentStatus): string {
     CONFIRMED: 'Confirmado',
     CHECKED_IN: 'Check-in',
     IN_PROGRESS: 'Em Atendimento',
-    COMPLETED: 'Concluido',
+    COMPLETED: 'Concluído',
     CANCELLED: 'Cancelado',
-    NO_SHOW: 'Nao Compareceu',
+    NO_SHOW: 'Não Compareceu',
   };
   return labels[status];
 }
@@ -38,14 +38,14 @@ function getActionList(status: AppointmentStatus): Array<{ label: string; status
     return [
       { label: 'Confirmar', status: 'CONFIRMED' },
       { label: 'Cancelar', status: 'CANCELLED' },
-      { label: 'Marcar como Nao Compareceu', status: 'NO_SHOW' },
+      { label: 'Marcar como Não Compareceu', status: 'NO_SHOW' },
     ];
   }
   if (status === 'CONFIRMED') {
     return [
       { label: 'Check-in', status: 'CHECKED_IN' },
       { label: 'Cancelar', status: 'CANCELLED' },
-      { label: 'Marcar como Nao Compareceu', status: 'NO_SHOW' },
+      { label: 'Marcar como Não Compareceu', status: 'NO_SHOW' },
     ];
   }
   if (status === 'CHECKED_IN') {
@@ -99,7 +99,7 @@ export function AppointmentDetailPanel({
       await updateAppointmentStatus(appointment.id, nextStatus, cancelReason);
       await onStatusUpdated();
     } catch (apiError) {
-      setError(getApiErrorMessage(apiError, 'Nao foi possivel atualizar o status.'));
+      setError(getApiErrorMessage(apiError, 'Não foi possível atualizar o status.'));
     } finally {
       setIsLoading(false);
     }
@@ -131,7 +131,7 @@ export function AppointmentDetailPanel({
           </div>
 
           <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">Medico</p>
+            <p className="text-xs text-muted-foreground">Médico</p>
             <p className="font-medium">{appointment.doctor.name}</p>
           </div>
 
@@ -149,14 +149,14 @@ export function AppointmentDetailPanel({
               <p className="font-medium">{date}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Horario</p>
+              <p className="text-xs text-muted-foreground">Horário</p>
               <p className="font-medium">{time}</p>
             </div>
           </div>
 
           <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">Observacoes</p>
-            <p className="text-sm">{appointment.notes || 'Sem observacoes.'}</p>
+            <p className="text-xs text-muted-foreground">Observações</p>
+            <p className="text-sm">{appointment.notes || 'Sem observações.'}</p>
           </div>
 
           {appointment.cancelReason && (
@@ -167,7 +167,7 @@ export function AppointmentDetailPanel({
 
           {actions.length > 0 && (
             <div className="space-y-2 pt-2">
-              <p className="text-xs text-muted-foreground">Acoes</p>
+              <p className="text-xs text-muted-foreground">Ações</p>
               <div className="flex flex-wrap gap-2">
                 {actions.map((action) => (
                   <Button

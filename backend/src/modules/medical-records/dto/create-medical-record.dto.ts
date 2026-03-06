@@ -7,15 +7,15 @@ export class CreateMedicalRecordDto {
   @IsNotEmpty()
   appointmentId: string;
 
-  @ApiProperty()
+  @ApiProperty({ required: false })
   @IsString()
-  @IsNotEmpty()
-  patientId: string;
+  @IsOptional()
+  patientId?: string;
 
-  @ApiProperty()
+  @ApiProperty({ required: false })
   @IsString()
-  @IsNotEmpty()
-  doctorId: string;
+  @IsOptional()
+  doctorId?: string;
 
   @ApiProperty({ required: false })
   @IsString()

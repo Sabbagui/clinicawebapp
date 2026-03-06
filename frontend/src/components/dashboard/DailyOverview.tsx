@@ -51,7 +51,7 @@ function actionLabel(status: AppointmentStatus) {
     IN_PROGRESS: 'Iniciar',
     COMPLETED: 'Finalizar',
     CANCELLED: 'Cancelar',
-    NO_SHOW: 'Nao Compareceu',
+    NO_SHOW: 'Não Compareceu',
   };
   return labels[status];
 }
@@ -71,7 +71,7 @@ export function DailyOverview() {
       const flattened = response.doctors.flatMap((group) => group.appointments);
       setAppointments(flattened);
     } catch (apiError) {
-      setError(getApiErrorMessage(apiError, 'Nao foi possivel carregar o resumo diario.'));
+      setError(getApiErrorMessage(apiError, 'Não foi possível carregar o resumo diário.'));
     } finally {
       setIsLoading(false);
     }
@@ -107,7 +107,7 @@ export function DailyOverview() {
       await updateAppointmentStatus(appointmentId, status, cancelReason);
       await load();
     } catch (apiError) {
-      setError(getApiErrorMessage(apiError, 'Nao foi possivel atualizar o status.'));
+      setError(getApiErrorMessage(apiError, 'Não foi possível atualizar o status.'));
     } finally {
       setIsUpdating(null);
     }
@@ -125,12 +125,12 @@ export function DailyOverview() {
           <StatBox label="Total" value={counters.total} />
           <StatBox label="Confirmados" value={counters.confirmed} />
           <StatBox label="Check-in" value={counters.checkedIn} />
-          <StatBox label="Concluidos" value={counters.completed} />
+          <StatBox label="Concluídos" value={counters.completed} />
           <StatBox label="Faltas" value={counters.noShow} />
         </div>
 
         <div className="space-y-2">
-          <p className="text-sm font-medium">Proximos 5 atendimentos</p>
+          <p className="text-sm font-medium">Próximos 5 atendimentos</p>
           {isLoading && <p className="text-sm text-muted-foreground">Carregando...</p>}
           {!isLoading && upcoming.length === 0 && (
             <p className="text-sm text-muted-foreground">Nenhum atendimento futuro para hoje.</p>

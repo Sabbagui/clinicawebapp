@@ -56,8 +56,8 @@ export class PatientsController {
 
   @Get()
   @ApiOperation({ summary: 'Get all patients' })
-  findAll(@Request() req) {
-    return this.patientsService.findAll(req.user);
+  findAll(@Request() req, @Query('search') search?: string) {
+    return this.patientsService.findAll(req.user, search);
   }
 
   @Get(':id')

@@ -32,14 +32,29 @@ export class PatientsService {
     });
   }
 
-  findAll(user: AccessUser) {
-    const where = isClinician(user)
+  findAll(user: AccessUser, search?: string) {
+    const normalizedSearch = search?.trim();
+    const searchFilter = normalizedSearch
       ? {
-          appointments: {
-            some: { doctorId: user.id },
-          },
+          OR: [
+            { name: { contains: normalizedSearch, mode: 'insensitive' as const } },
+            { cpf: { contains: normalizedSearch } },
+          ],
         }
       : undefined;
+
+    const where = isClinician(user)
+      ? {
+          AND: [
+            {
+              appointments: {
+                some: { doctorId: user.id },
+              },
+            },
+            ...(searchFilter ? [searchFilter] : []),
+          ],
+        }
+      : searchFilter;
 
     return this.prisma.patient.findMany({
       where,
@@ -135,7 +150,7 @@ export class PatientsService {
       },
     });
     if (!patient) {
-      throw new NotFoundException('Paciente nao encontrado');
+      throw new NotFoundException('Paciente não encontrado');
     }
 
     const user: AccessUser = { id: userId, role: userRole };

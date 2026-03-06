@@ -33,7 +33,7 @@ export default function DashboardPage() {
               <span className="text-muted-foreground">Funcao:</span>
               <p className="font-medium">
                 {user?.role === 'ADMIN' && 'Administrador'}
-                {user?.role === 'DOCTOR' && 'Medico(a)'}
+                {user?.role === 'DOCTOR' && 'Médico(a)'}
                 {user?.role === 'NURSE' && 'Enfermeiro(a)'}
                 {user?.role === 'RECEPTIONIST' && 'Recepcionista'}
               </p>
@@ -98,7 +98,7 @@ export default function DashboardPage() {
         <h3 className="font-semibold mb-2 text-primary">Sistema em Desenvolvimento</h3>
         <p className="text-sm text-muted-foreground">
           O sistema de autenticacao, gestao de pacientes e agendamentos estao disponiveis.
-          A funcionalidade de prontuarios medicos sera implementada em breve.
+          A funcionalidade de prontuários médicos sera implementada em breve.
         </p>
       </div>
 

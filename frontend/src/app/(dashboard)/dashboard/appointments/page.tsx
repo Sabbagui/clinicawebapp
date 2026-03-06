@@ -95,7 +95,7 @@ export default function AppointmentsPage() {
 
   useEffect(() => {
     getDoctors().then(setDoctors).catch((apiError) => {
-      setLocalError(getApiErrorMessage(apiError, 'Nao foi possivel carregar medicos.'));
+      setLocalError(getApiErrorMessage(apiError, 'Não foi possível carregar médicos.'));
     });
   }, []);
 
@@ -155,7 +155,7 @@ export default function AppointmentsPage() {
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-primary">Agendamentos</h1>
-          <p className="text-sm text-muted-foreground">Agenda diaria e semanal da clinica</p>
+          <p className="text-sm text-muted-foreground">Agenda diária e semanal da clínica</p>
         </div>
         <Button onClick={() => openNewModal(selectedDate, '08:00')}>
           <Plus className="mr-2 h-4 w-4" />
@@ -179,12 +179,12 @@ export default function AppointmentsPage() {
           </div>
 
           <div className="w-full md:w-72">
-            <label className="mb-1 block text-xs text-muted-foreground">Medico</label>
+            <label className="mb-1 block text-xs text-muted-foreground">Médico</label>
             <Select
               value={selectedDoctorId}
               onChange={(event) => setSelectedDoctor(event.target.value)}
             >
-              <option value="">Todos os medicos</option>
+              <option value="">Todos os médicos</option>
               {doctors.map((doctor) => (
                 <option key={doctor.id} value={doctor.id}>
                   {doctor.name}

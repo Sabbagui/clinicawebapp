@@ -24,9 +24,9 @@ export const STATUS_CONFIG: Record<string, { label: string; color: string; bgCol
   CONFIRMED: { label: 'Confirmado', color: 'text-green-700', bgColor: 'bg-green-100' },
   CHECKED_IN: { label: 'Check-in', color: 'text-yellow-700', bgColor: 'bg-yellow-100' },
   IN_PROGRESS: { label: 'Em Atendimento', color: 'text-orange-700', bgColor: 'bg-orange-100' },
-  COMPLETED: { label: 'Concluido', color: 'text-gray-700', bgColor: 'bg-gray-100' },
+  COMPLETED: { label: 'Concluído', color: 'text-gray-700', bgColor: 'bg-gray-100' },
   CANCELLED: { label: 'Cancelado', color: 'text-red-700', bgColor: 'bg-red-100' },
-  NO_SHOW: { label: 'Nao Compareceu', color: 'text-red-100', bgColor: 'bg-red-900' },
+  NO_SHOW: { label: 'Não Compareceu', color: 'text-red-100', bgColor: 'bg-red-900' },
 };
 
 export const STATUS_TRANSITIONS: Record<string, string[]> = {

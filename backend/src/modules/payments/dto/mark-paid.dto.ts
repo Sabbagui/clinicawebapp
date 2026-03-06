@@ -5,7 +5,7 @@ export class MarkPaidDto {
   @ApiPropertyOptional({
     example: '2026-02-01',
     description:
-      'Optional Sao Paulo wall-date (YYYY-MM-DD). When provided, paidAt is set to 12:00 America/Sao_Paulo converted to UTC.',
+      'Optional São Paulo wall-date (YYYY-MM-DD). When provided, paidAt is set to 12:00 America/Sao_Paulo converted to UTC.',
   })
   @IsOptional()
   @Matches(/^\d{4}-\d{2}-\d{2}$/, {

@@ -31,11 +31,11 @@ const appointmentTypeOptions: Array<{ value: AppointmentType; label: string }> =
 
 const formSchema = z.object({
   patientId: z.string().min(1, 'Selecione um paciente'),
-  doctorId: z.string().min(1, 'Selecione um medico'),
+  doctorId: z.string().min(1, 'Selecione um médico'),
   type: z.enum(['FIRST_VISIT', 'FOLLOW_UP', 'EXAM', 'PROCEDURE', 'URGENT']),
   date: z.string().min(1, 'Informe a data'),
-  startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Horario invalido'),
-  notes: z.string().max(500, 'Maximo de 500 caracteres').optional(),
+  startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Horário inválido'),
+  notes: z.string().max(500, 'Máximo de 500 caracteres').optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -109,7 +109,7 @@ export function NewAppointmentModal({
   useEffect(() => {
     if (!open) return;
     getDoctors().then(setDoctors).catch(() => {
-      setError('Nao foi possivel carregar medicos.');
+      setError('Não foi possível carregar médicos.');
     });
   }, [open]);
 
@@ -154,7 +154,7 @@ export function NewAppointmentModal({
     getAvailableSlots(selectedDoctorId, selectedDate)
       .then(setSlots)
       .catch((apiError) => {
-        setError(getApiErrorMessage(apiError, 'Falha ao carregar horarios disponiveis.'));
+        setError(getApiErrorMessage(apiError, 'Falha ao carregar horários disponíveis.'));
         setSlots([]);
       });
   }, [open, selectedDoctorId, selectedDate]);
@@ -228,7 +228,7 @@ export function NewAppointmentModal({
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="doctorId">Medico</Label>
+            <Label htmlFor="doctorId">Médico</Label>
             <Select id="doctorId" {...register('doctorId')} error={errors.doctorId?.message}>
               <option value="">Selecione...</option>
               {doctors.map((doctor) => (
@@ -258,7 +258,7 @@ export function NewAppointmentModal({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="startTime">Horario</Label>
+            <Label htmlFor="startTime">Horário</Label>
             <Select id="startTime" {...register('startTime')} error={errors.startTime?.message}>
               <option value="">Selecione...</option>
               {slots.map((slot) => (
@@ -271,13 +271,13 @@ export function NewAppointmentModal({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="notes">Observacoes</Label>
+          <Label htmlFor="notes">Observações</Label>
           <textarea
             id="notes"
             {...register('notes')}
             rows={3}
             className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            placeholder="Informacoes adicionais"
+            placeholder="Informações adicionais"
           />
         </div>
 

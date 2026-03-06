@@ -108,7 +108,7 @@ export const useAppointmentsStore = create<AppointmentsStoreState>((set, get) =>
       set({ availableSlots: slots });
     } catch (error) {
       set({
-        error: getApiErrorMessage(error, 'Erro ao carregar horarios disponiveis.'),
+        error: getApiErrorMessage(error, 'Erro ao carregar horários disponíveis.'),
       });
     }
   },

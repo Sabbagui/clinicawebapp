@@ -158,7 +158,7 @@ describe('AppointmentsService', () => {
       expect(result.kpis.pendingCents).toBe(10000);
     });
 
-    it('uses Sao Paulo day UTC boundaries for daily query', async () => {
+    it('uses São Paulo day UTC boundaries for daily query', async () => {
       mockPrisma.appointment.findMany.mockResolvedValue([]);
 
       await service.findByDay('2026-03-15');

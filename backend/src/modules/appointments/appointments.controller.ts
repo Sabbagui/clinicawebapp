@@ -44,7 +44,7 @@ export class AppointmentsController {
 
   @Get()
   @Roles(UserRole.ADMIN, UserRole.RECEPTIONIST, UserRole.DOCTOR, UserRole.NURSE)
-  @ApiOperation({ summary: 'Listar agendamentos com filtros e paginacao' })
+  @ApiOperation({ summary: 'Listar agendamentos com filtros e paginação' })
   @ApiResponse({ status: 200, description: 'Lista de agendamentos' })
   findAll(@Query() query: QueryAppointmentsDto) {
     return this.appointmentsService.findAll(query);
@@ -52,7 +52,7 @@ export class AppointmentsController {
 
   @Get('available-slots')
   @Roles(UserRole.ADMIN, UserRole.RECEPTIONIST, UserRole.DOCTOR, UserRole.NURSE)
-  @ApiOperation({ summary: 'Buscar horarios disponiveis do medico' })
+  @ApiOperation({ summary: 'Buscar horários disponíveis do médico' })
   @ApiQuery({ name: 'doctorId', required: true })
   @ApiQuery({ name: 'date', required: true, description: 'YYYY-MM-DD' })
   @ApiResponse({ status: 200, description: 'Lista de slots disponiveis' })
@@ -65,9 +65,9 @@ export class AppointmentsController {
 
   @Get('daily-overview')
   @Roles(UserRole.ADMIN, UserRole.DOCTOR)
-  @ApiOperation({ summary: 'Resumo diario de agendamentos agrupado por medico' })
+  @ApiOperation({ summary: 'Resumo diário de agendamentos agrupado por médico' })
   @ApiQuery({ name: 'date', required: true, description: 'YYYY-MM-DD' })
-  @ApiResponse({ status: 200, description: 'Resumo diario' })
+  @ApiResponse({ status: 200, description: 'Resumo diário' })
   getDailyOverview(@Query('date') date: string) {
     return this.appointmentsService.getDailyOverview(date);
   }
@@ -84,8 +84,12 @@ export class AppointmentsController {
   @Roles(UserRole.ADMIN, UserRole.RECEPTIONIST, UserRole.DOCTOR, UserRole.NURSE)
   @ApiOperation({ summary: 'Atualizar status do agendamento' })
   @ApiResponse({ status: 200, description: 'Status atualizado com sucesso' })
-  updateStatus(@Param('id') id: string, @Body() dto: UpdateAppointmentStatusDto) {
-    return this.appointmentsService.updateStatus(id, dto.status, dto.cancelReason);
+  updateStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateAppointmentStatusDto,
+    @Request() req,
+  ) {
+    return this.appointmentsService.updateStatus(id, dto.status, dto.cancelReason, req.user);
   }
 
   @Patch(':id')
