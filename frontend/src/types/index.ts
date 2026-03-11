@@ -79,6 +79,14 @@ export enum MedicalRecordStatus {
   FINAL = 'FINAL',
 }
 
+export interface Prescription {
+  drug: string;
+  dosage: string;
+  frequency: string;
+  duration: string;
+  instructions: string;
+}
+
 export interface MedicalRecord {
   id: string;
   patientId: string;
@@ -92,6 +100,8 @@ export interface MedicalRecord {
   objective: string;
   assessment: string;
   plan: string;
+  cid10?: string | null;
+  prescriptions?: Prescription[] | null;
   status: MedicalRecordStatus;
   finalizedAt?: string;
   finalizedById?: string;

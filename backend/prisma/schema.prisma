@@ -189,6 +189,10 @@ model MedicalRecord {
   assessment    String              @default("")
   plan          String              @default("")
 
+  // Clinical extras
+  cid10         String?
+  prescriptions Json?
+
   // Status
   status        MedicalRecordStatus @default(DRAFT)
   finalizedAt   DateTime?

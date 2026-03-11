@@ -30,6 +30,8 @@ export interface CreateMedicalRecordPayload {
   objective: string;
   assessment: string;
   plan: string;
+  cid10?: string;
+  prescriptions?: object[];
 }
 
 export interface UpdateMedicalRecordPayload {
@@ -37,6 +39,8 @@ export interface UpdateMedicalRecordPayload {
   objective?: string;
   assessment?: string;
   plan?: string;
+  cid10?: string;
+  prescriptions?: object[];
 }
 
 export const createMedicalRecord = async (

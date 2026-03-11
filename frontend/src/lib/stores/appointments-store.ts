@@ -8,6 +8,7 @@ import {
   getAppointments,
   getAvailableSlots,
   updateAppointmentStatus,
+  rescheduleAppointment as rescheduleAppointmentApi,
   type CreateAppointmentDto,
 } from '@/lib/api/appointments';
 import { getApiErrorMessage } from '@/lib/api/error-utils';
@@ -27,6 +28,7 @@ interface AppointmentsStoreState {
     cancelReason?: string,
   ) => Promise<AppointmentListItem>;
   fetchAvailableSlots: (doctorId: string, date: string) => Promise<void>;
+  reschedule: (id: string, date: string, startTime: string) => Promise<AppointmentListItem>;
   setSelectedDate: (date: string) => void;
   setSelectedDoctor: (doctorId: string) => void;
 }
@@ -110,6 +112,19 @@ export const useAppointmentsStore = create<AppointmentsStoreState>((set, get) =>
       set({
         error: getApiErrorMessage(error, 'Erro ao carregar horários disponíveis.'),
       });
+    }
+  },
+
+  reschedule: async (id, date, startTime) => {
+    try {
+      const updated = await rescheduleAppointmentApi(id, date, startTime);
+      set((state) => ({
+        appointments: state.appointments.map((a) => (a.id === id ? updated : a)),
+      }));
+      return updated;
+    } catch (error) {
+      const message = getApiErrorMessage(error, 'Erro ao reagendar consulta.');
+      throw new Error(message);
     }
   },
 

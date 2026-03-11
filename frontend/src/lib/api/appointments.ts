@@ -155,3 +155,15 @@ export async function getDailyOverview(
   );
   return response.data;
 }
+
+export async function rescheduleAppointment(
+  id: string,
+  date: string,
+  startTime: string,
+): Promise<AppointmentListItem> {
+  const response = await apiClient.patch<AppointmentListItem>(
+    `/api/appointments/${id}`,
+    { date, startTime },
+  );
+  return response.data;
+}

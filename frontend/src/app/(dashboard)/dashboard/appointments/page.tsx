@@ -6,7 +6,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import type { DateClickArg } from '@fullcalendar/interaction';
-import type { EventClickArg, EventInput, ViewMountArg } from '@fullcalendar/core';
+import type { EventClickArg, EventDropArg, EventInput, ViewMountArg } from '@fullcalendar/core';
 import { CalendarDays, Columns3, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,7 @@ import { getDoctors, type Doctor } from '@/lib/api/endpoints/users';
 import { useAppointmentsStore } from '@/lib/stores/appointments-store';
 import { NewAppointmentModal } from '@/components/appointments/NewAppointmentModal';
 import { AppointmentDetailPanel } from '@/components/appointments/AppointmentDetailPanel';
+import { Dialog } from '@/components/ui/dialog';
 import type { AppointmentListItem, AppointmentStatus } from '@/lib/api/appointments';
 import { getApiErrorMessage } from '@/lib/api/error-utils';
 
@@ -81,6 +82,12 @@ export default function AppointmentsPage() {
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentListItem | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [pendingReschedule, setPendingReschedule] = useState<{
+    id: string;
+    revert: () => void;
+    newDate: string;
+    newTime: string;
+  } | null>(null);
 
   const {
     appointments,
@@ -89,6 +96,7 @@ export default function AppointmentsPage() {
     isLoading,
     error,
     fetchAppointments,
+    reschedule,
     setSelectedDate,
     setSelectedDoctor,
   } = useAppointmentsStore();
@@ -131,6 +139,36 @@ export default function AppointmentsPage() {
     if (!appointment) return;
     setSelectedAppointment(appointment);
     setIsPanelOpen(true);
+  };
+
+  const handleEventDrop = (arg: EventDropArg) => {
+    const appointment = arg.event.extendedProps.appointment as AppointmentListItem | undefined;
+    if (!appointment || !arg.event.start) {
+      arg.revert();
+      return;
+    }
+    const start = arg.event.start;
+    const newDate = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
+    const newTime = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`;
+    setPendingReschedule({ id: appointment.id, revert: arg.revert, newDate, newTime });
+  };
+
+  const confirmReschedule = async () => {
+    if (!pendingReschedule) return;
+    const { id, revert, newDate, newTime } = pendingReschedule;
+    setPendingReschedule(null);
+    try {
+      await reschedule(id, newDate, newTime);
+    } catch (err) {
+      revert();
+      setLocalError(getApiErrorMessage(err, 'Erro ao reagendar consulta.'));
+    }
+  };
+
+  const cancelReschedule = () => {
+    if (!pendingReschedule) return;
+    pendingReschedule.revert();
+    setPendingReschedule(null);
   };
 
   const refreshAppointments = async () => {
@@ -234,10 +272,12 @@ export default function AppointmentsPage() {
           slotMaxTime="20:00:00"
           slotDuration="00:30:00"
           nowIndicator
-          editable={false}
+          editable
+          eventDurationEditable={false}
           selectable
           dateClick={handleDateClick}
           eventClick={handleEventClick}
+          eventDrop={handleEventDrop}
           events={events}
           height="auto"
         />
@@ -262,6 +302,24 @@ export default function AppointmentsPage() {
         onClose={() => setIsPanelOpen(false)}
         onStatusUpdated={refreshAppointments}
       />
+
+      <Dialog
+        open={!!pendingReschedule}
+        onClose={cancelReschedule}
+        title="Reagendar consulta"
+        description={
+          pendingReschedule
+            ? `Mover para ${pendingReschedule.newDate.split('-').reverse().join('/')} às ${pendingReschedule.newTime}?`
+            : undefined
+        }
+      >
+        <div className="mt-4 flex justify-end gap-2">
+          <Button variant="outline" onClick={cancelReschedule}>
+            Cancelar
+          </Button>
+          <Button onClick={confirmReschedule}>Confirmar</Button>
+        </div>
+      </Dialog>
     </div>
   );
 }

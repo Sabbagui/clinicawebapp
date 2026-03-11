@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsArray } from 'class-validator';
 
 export class UpdateMedicalRecordDto {
   @ApiProperty({ required: false, description: 'Subjetivo: queixa principal, HDA' })
@@ -21,4 +21,14 @@ export class UpdateMedicalRecordDto {
   @IsString()
   @IsOptional()
   plan?: string;
+
+  @ApiProperty({ required: false, description: 'Código CID-10 (ex: N92.0)' })
+  @IsString()
+  @IsOptional()
+  cid10?: string;
+
+  @ApiProperty({ required: false, description: 'Lista de prescrições estruturadas' })
+  @IsArray()
+  @IsOptional()
+  prescriptions?: object[];
 }
