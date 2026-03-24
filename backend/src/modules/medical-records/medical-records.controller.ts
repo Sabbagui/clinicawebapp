@@ -7,18 +7,22 @@ import {
   Param,
   UseGuards,
   Request,
+  HttpCode,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { UserRole } from '@prisma/client';
 import { MedicalRecordsService } from './medical-records.service';
 import { CreateMedicalRecordDto } from './dto/create-medical-record.dto';
 import { UpdateMedicalRecordDto } from './dto/update-medical-record.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { AuditService } from '../audit/audit.service';
 import { getRequestAuditMeta } from '@/common/audit/request-audit-meta';
 
 @ApiTags('Medical Records')
 @Controller('medical-records')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class MedicalRecordsController {
   constructor(
@@ -27,6 +31,7 @@ export class MedicalRecordsController {
   ) {}
 
   @Post()
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE)
   @ApiOperation({ summary: 'Create a new medical record' })
   async create(@Body() dto: CreateMedicalRecordDto, @Request() req) {
     const record = await this.medicalRecordsService.create(dto, req.user);
@@ -45,12 +50,14 @@ export class MedicalRecordsController {
   }
 
   @Get(':id')
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE)
   @ApiOperation({ summary: 'Get a medical record by ID' })
   findOne(@Param('id') id: string, @Request() req) {
     return this.medicalRecordsService.findOne(id, req.user);
   }
 
   @Patch(':id')
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE)
   @ApiOperation({ summary: 'Update SOAP fields on a medical record' })
   async update(@Param('id') id: string, @Body() dto: UpdateMedicalRecordDto, @Request() req) {
     const record = await this.medicalRecordsService.update(id, dto, req.user);
@@ -74,6 +81,8 @@ export class MedicalRecordsController {
   }
 
   @Post(':id/finalize')
+  @HttpCode(200)
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR)
   @ApiOperation({ summary: 'Finalize a medical record (DRAFT -> FINAL)' })
   async finalize(@Param('id') id: string, @Request() req) {
     const record = await this.medicalRecordsService.finalize(id, req.user);

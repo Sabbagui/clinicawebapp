@@ -28,7 +28,7 @@ import {
 
 @ApiTags('Patients')
 @Controller('patients')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class PatientsController {
   constructor(
@@ -37,6 +37,7 @@ export class PatientsController {
   ) {}
 
   @Post()
+  @Roles(UserRole.ADMIN, UserRole.RECEPTIONIST)
   @ApiOperation({ summary: 'Register a new patient' })
   async create(@Body() createPatientDto: CreatePatientDto, @Request() req) {
     const patient = await this.patientsService.create(createPatientDto);
@@ -55,12 +56,14 @@ export class PatientsController {
   }
 
   @Get()
+  @Roles(UserRole.ADMIN, UserRole.RECEPTIONIST, UserRole.DOCTOR, UserRole.NURSE)
   @ApiOperation({ summary: 'Get all patients' })
   findAll(@Request() req, @Query('search') search?: string) {
     return this.patientsService.findAll(req.user, search);
   }
 
   @Get(':id')
+  @Roles(UserRole.ADMIN, UserRole.RECEPTIONIST, UserRole.DOCTOR, UserRole.NURSE)
   @ApiOperation({
     summary: 'Get patient by ID with full history',
     description: 'Receptionist responses are redacted for clinical text.',
@@ -104,6 +107,7 @@ export class PatientsController {
   }
 
   @Patch(':id')
+  @Roles(UserRole.ADMIN, UserRole.RECEPTIONIST)
   @ApiOperation({ summary: 'Update patient information' })
   async update(
     @Param('id') id: string,
@@ -127,6 +131,7 @@ export class PatientsController {
   }
 
   @Delete(':id')
+  @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Delete patient' })
   async remove(@Param('id') id: string, @Request() req) {
     await this.patientsService.findOne(id, req.user);

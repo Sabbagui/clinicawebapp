@@ -19,6 +19,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @Post('me')
+  @HttpCode(200)
   @ApiOperation({ summary: 'Get current user' })
   getProfile(@Request() req) {
     return req.user;
