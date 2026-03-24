@@ -55,7 +55,7 @@ function parseDateOnly(value: string): string {
 function parseHHMM(value: string): number {
   const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value);
   if (!match) {
-    throw new BadRequestException('HorÃ¡rio invÃ¡lido. Use o formato HH:mm.');
+    throw new BadRequestException('Horário inválido. Use o formato HH:mm.');
   }
   return Number(match[1]) * 60 + Number(match[2]);
 }
@@ -138,13 +138,13 @@ export class AppointmentsService {
     });
 
     if (!schedule || !schedule.isActive) {
-      throw new ConflictException('MÃ©dico sem agenda ativa para este dia.');
+      throw new ConflictException('Médico sem agenda ativa para este dia.');
     }
 
     const scheduleStart = parseHHMM(schedule.startTime);
     const scheduleEnd = parseHHMM(schedule.endTime);
     if (newSlot.startMinutes < scheduleStart || newSlot.endMinutes > scheduleEnd) {
-      throw new ConflictException('HorÃ¡rio fora da jornada configurada do mÃ©dico.');
+      throw new ConflictException('Horário fora da jornada configurada do médico.');
     }
   }
 
@@ -172,7 +172,7 @@ export class AppointmentsService {
         endMinutes: getEndMinutesFromAppointment(appointment),
       };
       if (slotOverlaps(slot, newSlot)) {
-        throw new ConflictException('Conflito de horÃ¡rio: mÃ©dico jÃ¡ possui agendamento neste perÃ­odo.');
+        throw new ConflictException('Conflito de horário: médico já possui agendamento neste período.');
       }
     }
   }
@@ -193,7 +193,7 @@ export class AppointmentsService {
         endMinutes: timeDateToMinutes(item.endTime),
       };
       if (slotOverlaps(slot, newSlot)) {
-        throw new ConflictException('HorÃ¡rio indisponÃ­vel: bloqueio na agenda do mÃ©dico.');
+        throw new ConflictException('Horário indisponível: bloqueio na agenda do médico.');
       }
     }
   }
@@ -207,7 +207,7 @@ export class AppointmentsService {
   private ensureValidTransition(current: AppointmentStatus, next: AppointmentStatus) {
     const allowed = STATUS_TRANSITIONS[current] ?? [];
     if (!allowed.includes(next)) {
-      throw new BadRequestException(`TransiÃ§Ã£o de ${current} para ${next} nÃ£o permitida.`);
+      throw new BadRequestException(`Transição de ${current} para ${next} não permitida.`);
     }
   }
 
@@ -244,7 +244,7 @@ export class AppointmentsService {
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        throw new ConflictException('Conflito de horÃ¡rio: slot jÃ¡ ocupado para este mÃ©dico.');
+        throw new ConflictException('Conflito de horário: slot já ocupado para este médico.');
       }
       throw error;
     }
@@ -303,7 +303,7 @@ export class AppointmentsService {
     });
 
     if (!appointment) {
-      throw new NotFoundException('Agendamento nÃ£o encontrado.');
+      throw new NotFoundException('Agendamento não encontrado.');
     }
 
     return appointment;
@@ -312,7 +312,7 @@ export class AppointmentsService {
   async update(id: string, dto: UpdateAppointmentDto) {
     const current = await this.prisma.appointment.findUnique({ where: { id } });
     if (!current) {
-      throw new NotFoundException('Agendamento nÃ£o encontrado.');
+      throw new NotFoundException('Agendamento não encontrado.');
     }
 
     const doctorId = dto.doctorId ?? current.doctorId;
@@ -370,12 +370,12 @@ export class AppointmentsService {
   ) {
     const current = await this.prisma.appointment.findUnique({ where: { id } });
     if (!current) {
-      throw new NotFoundException('Agendamento nÃ£o encontrado.');
+      throw new NotFoundException('Agendamento não encontrado.');
     }
 
     if (user.role === UserRole.DOCTOR && current.doctorId !== user.id) {
       throw new ForbiddenException(
-        'VocÃª nÃ£o tem permissÃ£o para alterar agendamentos de outro mÃ©dico.',
+        'Você não tem permissão para alterar agendamentos de outro médico.',
       );
     }
 
