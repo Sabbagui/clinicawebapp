@@ -43,18 +43,20 @@ export class PatientsService {
         }
       : undefined;
 
-    const where = isClinician(user)
-      ? {
-          AND: [
-            {
-              appointments: {
-                some: { doctorId: user.id },
-              },
-            },
-            ...(searchFilter ? [searchFilter] : []),
-          ],
-        }
-      : searchFilter;
+    const baseWhere = { isActive: true };
+
+    const where =
+      user.role === UserRole.DOCTOR
+        ? {
+            AND: [
+              baseWhere,
+              { appointments: { some: { doctorId: user.id } } },
+              ...(searchFilter ? [searchFilter] : []),
+            ],
+          }
+        : searchFilter
+          ? { AND: [baseWhere, searchFilter] }
+          : baseWhere;
 
     return this.prisma.patient.findMany({
       where,
@@ -128,8 +130,9 @@ export class PatientsService {
   }
 
   remove(id: string) {
-    return this.prisma.patient.delete({
+    return this.prisma.patient.update({
       where: { id },
+      data: { isActive: false, deletedAt: new Date() },
     });
   }
 
