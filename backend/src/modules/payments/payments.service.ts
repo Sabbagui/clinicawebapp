@@ -4,6 +4,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
 import { AppointmentStatus, PaymentStatus } from '@prisma/client';
 import { PrismaService } from '@/common/prisma/prisma.service';
 import { saoPauloDateAtNoonToUtc } from '@/common/time/br-time';
@@ -150,6 +152,45 @@ export class PaymentsService {
     if (!ACTIVE_APPOINTMENT_STATUSES.includes(appointment.status)) {
       throw new ConflictException('Não é possível criar pagamento para agendamento inativo');
     }
+  }
+
+  async uploadReceipt(id: string, file: Express.Multer.File) {
+    const payment = await this.getPaymentOrThrow(id);
+
+    // Delete old receipt file if exists
+    if (payment.receiptPath) {
+      const oldFilePath = path.join(process.cwd(), 'uploads', payment.receiptPath);
+      if (fs.existsSync(oldFilePath)) {
+        fs.unlinkSync(oldFilePath);
+      }
+    }
+
+    const relativePath = path.join('receipts', file.filename).replace(/\\/g, '/');
+
+    return this.prisma.payment.update({
+      where: { id },
+      data: { receiptPath: relativePath },
+      include: { appointment: true },
+    });
+  }
+
+  async deleteReceipt(id: string) {
+    const payment = await this.getPaymentOrThrow(id);
+
+    if (!payment.receiptPath) {
+      throw new BadRequestException('Nenhum comprovante anexado a este pagamento');
+    }
+
+    const filePath = path.join(process.cwd(), 'uploads', payment.receiptPath);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+    return this.prisma.payment.update({
+      where: { id },
+      data: { receiptPath: null },
+      include: { appointment: true },
+    });
   }
 
   private async getPaymentOrThrow(id: string) {

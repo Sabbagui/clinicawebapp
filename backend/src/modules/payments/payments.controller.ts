@@ -1,16 +1,25 @@
 import {
+  BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
   Post,
   Req,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import * as crypto from 'crypto';
+import * as path from 'path';
 import {
   ApiBody,
   ApiBearerAuth,
+  ApiConsumes,
   ApiOperation,
   ApiParam,
   ApiTags,
@@ -150,6 +159,74 @@ export class PaymentsController {
       entityType: 'PAYMENT',
       entityId: payment.id,
       metadata: { amount: payment.amount, method: payment.method },
+      ip,
+      userAgent,
+    });
+    return payment;
+  }
+
+  @Post('payments/:id/upload-receipt')
+  @Roles(UserRole.ADMIN, UserRole.RECEPTIONIST)
+  @ApiOperation({ summary: 'Upload comprovante de pagamento (imagem ou PDF, max 5MB)' })
+  @ApiParam({ name: 'id', description: 'Payment ID' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { receipt: { type: 'string', format: 'binary' } } } })
+  @UseInterceptors(
+    FileInterceptor('receipt', {
+      storage: diskStorage({
+        destination: path.join(process.cwd(), 'uploads', 'receipts'),
+        filename: (_req, file, cb) => {
+          const ext = path.extname(file.originalname).toLowerCase();
+          cb(null, `${crypto.randomUUID()}${ext}`);
+        },
+      }),
+      limits: { fileSize: 5 * 1024 * 1024 },
+      fileFilter: (_req, file, cb) => {
+        const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+        if (allowed.includes(file.mimetype)) {
+          cb(null, true);
+        } else {
+          cb(new BadRequestException('Tipo de arquivo inválido. Use JPG, PNG, WEBP ou PDF.'), false);
+        }
+      },
+    }),
+  )
+  async uploadReceipt(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Nenhum arquivo enviado');
+    }
+    const payment = await this.paymentsService.uploadReceipt(id, file);
+    const { ip, userAgent } = getRequestAuditMeta(req);
+    await this.auditService.log({
+      actorUserId: req.user.id,
+      actorRole: req.user.role,
+      action: 'PAYMENT_RECEIPT_UPLOAD',
+      entityType: 'PAYMENT',
+      entityId: payment.id,
+      metadata: { filename: file.filename },
+      ip,
+      userAgent,
+    });
+    return payment;
+  }
+
+  @Delete('payments/:id/receipt')
+  @Roles(UserRole.ADMIN, UserRole.RECEPTIONIST)
+  @ApiOperation({ summary: 'Remover comprovante de pagamento' })
+  @ApiParam({ name: 'id', description: 'Payment ID' })
+  async deleteReceipt(@Param('id') id: string, @Req() req) {
+    const payment = await this.paymentsService.deleteReceipt(id);
+    const { ip, userAgent } = getRequestAuditMeta(req);
+    await this.auditService.log({
+      actorUserId: req.user.id,
+      actorRole: req.user.role,
+      action: 'PAYMENT_RECEIPT_DELETE',
+      entityType: 'PAYMENT',
+      entityId: payment.id,
       ip,
       userAgent,
     });

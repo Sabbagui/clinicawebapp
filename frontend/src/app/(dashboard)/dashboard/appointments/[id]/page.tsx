@@ -17,10 +17,12 @@ import { getApiErrorMessage } from '@/lib/api/error-utils';
 import {
   cancelPayment,
   createAppointmentPayment,
+  deletePaymentReceipt,
   getAppointmentPayment,
   markPaymentPaid,
   refundPayment,
   updatePayment,
+  uploadPaymentReceipt,
 } from '@/lib/api/endpoints/payments';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { PaymentMethod, PaymentStatus, UserRole, type Payment } from '@/types';
@@ -31,7 +33,7 @@ import {
   formatPhone,
   getTodayYmdInSaoPaulo,
 } from '@/lib/utils';
-import { ArrowLeft, Pencil, Clock, User, Stethoscope, FileText } from 'lucide-react';
+import { ArrowLeft, Pencil, Clock, User, Stethoscope, FileText, Paperclip, Trash2, ExternalLink } from 'lucide-react';
 
 export default function AppointmentDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -48,6 +50,8 @@ export default function AppointmentDetailPage({ params }: { params: { id: string
   const [amountInput, setAmountInput] = useState('');
   const [methodInput, setMethodInput] = useState<PaymentMethod>(PaymentMethod.PIX);
   const [notesInput, setNotesInput] = useState('');
+  const [receiptUploading, setReceiptUploading] = useState(false);
+  const [receiptError, setReceiptError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAppointment(params.id);
@@ -154,6 +158,36 @@ export default function AppointmentDetailPage({ params }: { params: { id: string
       setMarkPaidModalError(getApiErrorMessage(err, 'Erro ao marcar pagamento como pago'));
     } finally {
       setMarkPaidModalLoading(false);
+    }
+  };
+
+  const handleReceiptUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!payment || !e.target.files?.[0]) return;
+    const file = e.target.files[0];
+    setReceiptError(null);
+    setReceiptUploading(true);
+    try {
+      const updated = await uploadPaymentReceipt(payment.id, file);
+      setPayment(updated);
+    } catch (err: unknown) {
+      setReceiptError(extractApiError(err));
+    } finally {
+      setReceiptUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleReceiptDelete = async () => {
+    if (!payment) return;
+    setReceiptError(null);
+    setReceiptUploading(true);
+    try {
+      const updated = await deletePaymentReceipt(payment.id);
+      setPayment(updated);
+    } catch (err: unknown) {
+      setReceiptError(extractApiError(err));
+    } finally {
+      setReceiptUploading(false);
     }
   };
 
@@ -469,6 +503,64 @@ export default function AppointmentDetailPage({ params }: { params: { id: string
                 Reembolsar
               </Button>
             )}
+
+            {/* Receipt section */}
+            <div className="pt-2 border-t space-y-2">
+              <p className="text-sm font-medium flex items-center gap-1">
+                <Paperclip className="h-4 w-4" />
+                Comprovante
+              </p>
+              {receiptError && (
+                <Alert variant="destructive">{receiptError}</Alert>
+              )}
+              {payment.receiptPath ? (
+                <div className="flex items-center gap-3 flex-wrap">
+                  <a
+                    href={`/uploads/${payment.receiptPath}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Ver comprovante
+                  </a>
+                  <label className="inline-flex items-center gap-1 cursor-pointer text-sm text-muted-foreground hover:text-foreground">
+                    <Paperclip className="h-4 w-4" />
+                    Substituir
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,application/pdf"
+                      className="hidden"
+                      onChange={handleReceiptUpload}
+                      disabled={receiptUploading}
+                    />
+                  </label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleReceiptDelete}
+                    disabled={receiptUploading}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Remover
+                  </Button>
+                </div>
+              ) : (
+                <label className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md cursor-pointer hover:bg-accent disabled:opacity-50">
+                  <Paperclip className="h-4 w-4" />
+                  {receiptUploading ? 'Enviando...' : 'Anexar comprovante'}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    className="hidden"
+                    onChange={handleReceiptUpload}
+                    disabled={receiptUploading}
+                  />
+                </label>
+              )}
+              <p className="text-xs text-muted-foreground">JPG, PNG, WEBP ou PDF — máx. 5MB</p>
+            </div>
           </div>
         )}
       </div>

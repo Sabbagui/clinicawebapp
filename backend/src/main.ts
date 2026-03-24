@@ -1,11 +1,25 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import * as path from 'path';
+import * as fs from 'fs';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Ensure uploads directory exists
+  const uploadsDir = path.join(process.cwd(), 'uploads', 'receipts');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+
+  // Serve uploaded files at /uploads/*
+  app.useStaticAssets(path.join(process.cwd(), 'uploads'), {
+    prefix: '/uploads',
+  });
   const corsOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000')
     .split(',')
     .map((origin) => origin.trim())

@@ -135,6 +135,7 @@ export interface Payment {
   paidAt?: string;
   refundedAt?: string;
   notes?: string;
+  receiptPath?: string;
   createdAt?: string;
   updatedAt?: string;
 }

@@ -65,3 +65,19 @@ export const refundPayment = async (paymentId: string): Promise<Payment> => {
   const response = await apiClient.post<Payment>(`/api/payments/${paymentId}/refund`);
   return response.data;
 };
+
+export const uploadPaymentReceipt = async (paymentId: string, file: File): Promise<Payment> => {
+  const formData = new FormData();
+  formData.append('receipt', file);
+  const response = await apiClient.post<Payment>(
+    `/api/payments/${paymentId}/upload-receipt`,
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } },
+  );
+  return response.data;
+};
+
+export const deletePaymentReceipt = async (paymentId: string): Promise<Payment> => {
+  const response = await apiClient.delete<Payment>(`/api/payments/${paymentId}/receipt`);
+  return response.data;
+};
