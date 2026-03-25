@@ -15,7 +15,7 @@ export function AppointmentStatusActions({
   appointmentId,
   currentStatus,
 }: AppointmentStatusActionsProps) {
-  const { changeStatus, fetchAppointment } = useAppointmentStore();
+  const { changeStatus } = useAppointmentStore();
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState<string | null>(null);
 
@@ -36,7 +36,6 @@ export function AppointmentStatusActions({
     setShowConfirm(null);
     try {
       await changeStatus(appointmentId, status);
-      await fetchAppointment(appointmentId);
     } finally {
       setIsUpdating(null);
     }

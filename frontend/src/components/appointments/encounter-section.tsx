@@ -144,7 +144,7 @@ export function EncounterSection({ appointment }: EncounterSectionProps) {
 
   const isReadOnly = record?.status === 'FINAL' || appointment.status === 'COMPLETED';
 
-  if (appointment.status === 'SCHEDULED' || appointment.status === 'CONFIRMED') {
+  if (appointment.status === 'SCHEDULED' || appointment.status === 'CONFIRMED' || appointment.status === 'CHECKED_IN') {
     return (
       <div className="p-6 border rounded-lg bg-card shadow-sm">
         <h3 className="font-semibold text-lg mb-4 pb-2 border-b flex items-center gap-2">

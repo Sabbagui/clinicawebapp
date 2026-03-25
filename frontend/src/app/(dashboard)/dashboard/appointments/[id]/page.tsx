@@ -191,7 +191,7 @@ export default function AppointmentDetailPage({ params }: { params: { id: string
     }
   };
 
-  if (isLoading) {
+  if (isLoading && !currentAppointment) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-12 w-full" />
