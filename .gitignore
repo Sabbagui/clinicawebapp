@@ -55,6 +55,10 @@ prisma/.env
 # Claude Code
 .claude/
 
+# TypeScript build cache
+tsconfig.tsbuildinfo
+**/tsconfig.tsbuildinfo
+
 # Windows artifacts
 nul
 
