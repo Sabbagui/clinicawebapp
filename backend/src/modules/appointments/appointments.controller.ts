@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
@@ -98,6 +99,32 @@ export class AppointmentsController {
   @ApiResponse({ status: 200, description: 'Agendamento atualizado com sucesso' })
   update(@Param('id') id: string, @Body() dto: UpdateAppointmentDto) {
     return this.appointmentsService.update(id, dto);
+  }
+
+  @Get(':id/medical-record')
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE)
+  @ApiOperation({ summary: 'Buscar prontuário do agendamento' })
+  @ApiResponse({ status: 200, description: 'Prontuário encontrado ou null' })
+  getAppointmentMedicalRecord(@Param('id') id: string) {
+    return this.appointmentsService.getAppointmentMedicalRecord(id);
+  }
+
+  @Post(':id/start')
+  @HttpCode(200)
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR, UserRole.NURSE)
+  @ApiOperation({ summary: 'Iniciar atendimento (→ IN_PROGRESS)' })
+  @ApiResponse({ status: 200, description: 'Atendimento iniciado' })
+  startEncounter(@Param('id') id: string, @Request() req) {
+    return this.appointmentsService.startEncounter(id, req.user);
+  }
+
+  @Post(':id/complete')
+  @HttpCode(200)
+  @Roles(UserRole.ADMIN, UserRole.DOCTOR)
+  @ApiOperation({ summary: 'Concluir atendimento (→ COMPLETED)' })
+  @ApiResponse({ status: 200, description: 'Atendimento concluído' })
+  completeEncounter(@Param('id') id: string, @Request() req) {
+    return this.appointmentsService.completeEncounter(id, req.user);
   }
 
   @Delete(':id')

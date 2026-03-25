@@ -8,6 +8,7 @@ import {
 import {
   AppointmentStatus,
   AppointmentType,
+  MedicalRecordStatus,
   Prisma,
   UserRole,
 } from '@prisma/client';
@@ -505,6 +506,118 @@ export class AppointmentsService {
     return this.prisma.appointment.update({
       where: { id },
       data: { status: AppointmentStatus.CANCELLED },
+    });
+  }
+
+  async startEncounter(id: string, user: { id: string; role: UserRole }) {
+    const appointment = await this.prisma.appointment.findUnique({
+      where: { id },
+      include: {
+        patient: { select: { id: true, name: true } },
+        doctor: { select: { id: true, name: true } },
+      },
+    });
+
+    if (!appointment) {
+      throw new NotFoundException('Agendamento não encontrado.');
+    }
+
+    const allowedStatuses = [
+      AppointmentStatus.SCHEDULED,
+      AppointmentStatus.CONFIRMED,
+      AppointmentStatus.CHECKED_IN,
+    ];
+    if (!allowedStatuses.includes(appointment.status)) {
+      throw new BadRequestException(
+        'Não é possível iniciar atendimento para um agendamento neste status.',
+      );
+    }
+
+    if (user.role === UserRole.DOCTOR && appointment.doctorId !== user.id) {
+      throw new ForbiddenException(
+        'Você não tem permissão para iniciar atendimento de outro médico.',
+      );
+    }
+
+    const updated = await this.prisma.appointment.update({
+      where: { id },
+      data: { status: AppointmentStatus.IN_PROGRESS },
+      include: {
+        patient: { select: { id: true, name: true } },
+        doctor: { select: { id: true, name: true } },
+      },
+    });
+
+    const existingRecord = await this.prisma.medicalRecord.findUnique({
+      where: { appointmentId: id },
+    });
+    if (!existingRecord) {
+      await this.prisma.medicalRecord.create({
+        data: {
+          appointmentId: id,
+          patientId: appointment.patientId,
+          doctorId: appointment.doctorId,
+          subjective: '',
+          objective: '',
+          assessment: '',
+          plan: '',
+          status: MedicalRecordStatus.DRAFT,
+        },
+      });
+    }
+
+    return updated;
+  }
+
+  async completeEncounter(id: string, user: { id: string; role: UserRole }) {
+    const appointment = await this.prisma.appointment.findUnique({
+      where: { id },
+      include: {
+        medicalRecord: { select: { status: true } },
+        patient: { select: { id: true, name: true } },
+        doctor: { select: { id: true, name: true } },
+      },
+    });
+
+    if (!appointment) {
+      throw new NotFoundException('Agendamento não encontrado.');
+    }
+
+    if (appointment.status !== AppointmentStatus.IN_PROGRESS) {
+      throw new BadRequestException('Agendamento não está em atendimento.');
+    }
+
+    if (user.role === UserRole.DOCTOR && appointment.doctorId !== user.id) {
+      throw new ForbiddenException(
+        'Você não tem permissão para concluir atendimento de outro médico.',
+      );
+    }
+
+    if (!appointment.medicalRecord || appointment.medicalRecord.status !== MedicalRecordStatus.FINAL) {
+      throw new BadRequestException('Finalize o prontuário antes de concluir o atendimento.');
+    }
+
+    return this.prisma.appointment.update({
+      where: { id },
+      data: { status: AppointmentStatus.COMPLETED },
+      include: {
+        patient: { select: { id: true, name: true } },
+        doctor: { select: { id: true, name: true } },
+      },
+    });
+  }
+
+  async getAppointmentMedicalRecord(id: string) {
+    return this.prisma.medicalRecord.findUnique({
+      where: { appointmentId: id },
+      include: {
+        patient: { select: { id: true, name: true } },
+        doctor: { select: { id: true, name: true } },
+        appointment: {
+          select: { id: true, scheduledDate: true, type: true, status: true, doctorId: true },
+        },
+        finalizedBy: { select: { id: true, name: true } },
+      },
     });
   }
 }
