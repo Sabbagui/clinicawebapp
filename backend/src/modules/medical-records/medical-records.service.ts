@@ -79,6 +79,8 @@ export class MedicalRecordsService {
         objective: dto.objective ?? '',
         assessment: dto.assessment ?? '',
         plan: dto.plan ?? '',
+        ...(dto.cid10 !== undefined && { cid10: dto.cid10 }),
+        ...(dto.prescriptions !== undefined && { prescriptions: dto.prescriptions }),
         status: MedicalRecordStatus.DRAFT,
       },
       include: INCLUDE_RELATIONS,
@@ -133,6 +135,8 @@ export class MedicalRecordsService {
         ...(dto.objective !== undefined && { objective: dto.objective }),
         ...(dto.assessment !== undefined && { assessment: dto.assessment }),
         ...(dto.plan !== undefined && { plan: dto.plan }),
+        ...(dto.cid10 !== undefined && { cid10: dto.cid10 }),
+        ...(dto.prescriptions !== undefined && { prescriptions: dto.prescriptions }),
       },
       include: INCLUDE_RELATIONS,
     });
