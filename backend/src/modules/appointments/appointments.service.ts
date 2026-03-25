@@ -522,7 +522,7 @@ export class AppointmentsService {
       throw new NotFoundException('Agendamento não encontrado.');
     }
 
-    const allowedStatuses = [
+    const allowedStatuses: AppointmentStatus[] = [
       AppointmentStatus.SCHEDULED,
       AppointmentStatus.CONFIRMED,
       AppointmentStatus.CHECKED_IN,
