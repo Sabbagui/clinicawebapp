@@ -2,6 +2,47 @@
 
 ---
 
+## [2026-03-26] — Módulo de despesas, dark mode e ajustes de paleta
+
+### Feito
+- **Módulo de despesas** implementado do zero (backend + frontend):
+  - Modelo `Expense` + `ExpenseCategory` adicionados ao schema Prisma
+  - Migration criada para as novas tabelas
+  - Backend: módulo NestJS `expenses` com CRUD completo de despesas e categorias
+  - Categorias padrão populadas no seed
+  - Frontend: aba "Despesas" na página `/dashboard/finance`
+  - Upload de comprovante PDF com extração de dados via `pdf-parse` (sem LLM)
+  - Gerenciamento de categorias disponível para `ADMIN` e `RECEPTIONIST`
+- **Dark mode** implementado:
+  - Dependência `next-themes` adicionada
+  - Toggle no header do dashboard
+  - CSS variables atualizadas em `globals.css` com paleta terracota + verde sage
+  - Overrides do FullCalendar para dark mode (`.dark .fc-*` no globals.css)
+- **Paleta de marca** atualizada para terracota (`hsl(14 47% 52%)`) + verde sage
+- **Status de agendamentos** no calendário com cores ajustadas para a nova paleta
+- **KPI cards** da página Financeiro: classes `dark:` adicionadas para `bg-green-50`, `bg-yellow-50`, `bg-pink-50`, `bg-blue-50` (parcial — ver pendências)
+- **package-lock.json** atualizado para incluir `next-themes` (evitava falha no `npm ci` do servidor)
+- **Bug prontuário (500)**: colunas `cid10` e `prescriptions` estavam ausentes na tabela `medical_records` apesar da migration marcada como aplicada — corrigidas com `ALTER TABLE` manual no servidor
+- **Servidor travando**: investigado; provável causa foi conexão de SSD solta — reencaixado
+
+### Decisões tomadas
+- Despesas sempre registradas após pagamento → sem campo de status (pago/pendente)
+- Extração de PDF via `pdf-parse` puro, sem LLM (funciona para PDFs gerados digitalmente)
+- Dark mode: `darkMode: ["class"]` no Tailwind; `next-themes` aplica classe `.dark` no `<html>`
+- FullCalendar requer overrides CSS manuais — não responde à classe `.dark` automaticamente
+
+### Pendências desta sessão
+- Cards KPI "Despesas" e "Resultado" ainda com pastel claro no dark mode (classes `dark:` não aplicadas)
+- Merge conflict em `frontend/src/app/(dashboard)/dashboard/staff/page.tsx` — precisa resolver para completar o merge `claude/elastic-franklin → main`
+
+### Próximos passos
+1. Resolver merge conflict em `staff/page.tsx`
+2. Aplicar `dark:` nos cards "Despesas" e "Resultado" da página Financeiro
+3. Verificar mesmos cards na página Cobranças (`/dashboard/receivables`)
+4. Fazer `git pull` no servidor para aplicar todas as mudanças
+
+---
+
 ## [2026-03-24] — Inicialização dos arquivos de contexto de sessão
 
 ### Feito

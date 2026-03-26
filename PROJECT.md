@@ -28,6 +28,7 @@
 | `medical-records` | Prontuários SOAP (subjetivo, objetivo, avaliação, plano), CID-10, prescrições (JSON) |
 | `payments` | Pagamentos vinculados a consultas; métodos PIX/Dinheiro/Cartão etc. |
 | `finance` | Relatórios financeiros com filtros de período |
+| `expenses` | CRUD de despesas operacionais com categorias; extração de dados de PDF via pdf-parse |
 | `audit` | Módulo global — loga todas as mutações com ator, IP, entidade e metadados |
 | `notifications` | Serviço de lembretes via WhatsApp (opcional, via webhook externo) |
 | `prisma` | Módulo global — instância compartilhada do PrismaService |
@@ -46,7 +47,7 @@
 | `/dashboard/patients/new` | Cadastro de paciente |
 | `/dashboard/patients/[id]` | Ficha do paciente |
 | `/dashboard/patients/[id]/history` | Histórico de prontuários |
-| `/dashboard/finance` | Relatório financeiro |
+| `/dashboard/finance` | Relatório financeiro (abas: Receitas / Despesas) |
 | `/dashboard/receivables` | Contas a receber |
 | `/dashboard/staff` | Gerenciamento de equipe |
 | `/dashboard/audit` | Logs de auditoria |
@@ -65,6 +66,9 @@
 - **2025-03-23:** FullCalendar integrado no frontend com suporte a drag-to-reschedule (muda a data/hora do agendamento via PATCH).
 - **2025-03-23:** Lembretes de consulta implementados no serviço `reminders.service.ts` via `@nestjs/schedule`. WhatsApp é opcional (webhook configurável por env).
 - **2025-03-23:** Prontuário médico em formato SOAP. Status: `DRAFT` (editável) ou `FINAL` (imutável, requer médico logado para finalizar).
+- **2026-03-25:** Módulo de despesas implementado. Despesas são sempre registradas após o pagamento (sem status pendente/pago). Categorias gerenciáveis por admin/recepcionista. Extração de dados de PDF via `pdf-parse` (sem LLM). Comprovante opcional.
+- **2026-03-25:** Dark mode implementado com `next-themes`. Toggle no header. Nova paleta de marca: terracota (`hsl(14 47% 52%)`) + verde sage. CSS variables em `globals.css`. FullCalendar requer overrides CSS específicos (`.dark .fc-*`) pois injeta seu próprio CSS.
+- **2026-03-25:** Cores dos status de agendamento no calendário ajustadas para nova paleta terracota/sage.
 
 ---
 
@@ -73,6 +77,7 @@
 ### Enums
 
 - **UserRole:** `ADMIN`, `DOCTOR`, `NURSE`, `RECEPTIONIST`
+- **ExpenseCategory:** categorias de despesa gerenciadas no banco (ex: Aluguel, Material, Pessoal, etc.)
 - **AppointmentStatus:** `SCHEDULED`, `CONFIRMED`, `CHECKED_IN`, `IN_PROGRESS`, `COMPLETED`, `CANCELLED`, `NO_SHOW`
 - **AppointmentType:** `FIRST_VISIT`, `FOLLOW_UP`, `EXAM`, `PROCEDURE`, `URGENT`
 - **MedicalRecordStatus:** `DRAFT`, `FINAL`
@@ -88,6 +93,8 @@
 - **DoctorBlockedSlot** — bloqueios pontuais de horário
 - **MedicalRecord** — prontuário vinculado 1:1 a `Appointment`; SOAP + CID-10 + prescrições (JSON)
 - **Payment** — pagamento vinculado 1:1 a `Appointment`; valor em centavos
+- **Expense** — despesa operacional com categoria, valor, data, descrição, notas e comprovante (PDF opcional)
+- **ExpenseCategory** — categorias de despesa (nome, descrição); gerenciáveis por admin/recepcionista
 - **AuditLog** — log de auditoria com ator, role, ação, entidade, IP, user agent
 
 ---
@@ -100,6 +107,8 @@
 - [ ] Prontuário: auto-resolução de status não está funcionando (transição `DRAFT → FINAL` automática)
 - [ ] Reminders: confirmar se o webhook de WhatsApp está sendo chamado corretamente em produção
 - [ ] Tela de receivables (`/dashboard/receivables`): validar se os filtros de período estão alinhados com `finance.service`
+- [ ] Cards KPI "Despesas" e "Resultado" na página Financeiro ainda com cores pastel claras no dark mode (faltam classes `dark:` — merge conflict pendente em `staff/page.tsx` impediu o push)
+- [ ] Merge conflict em `frontend/src/app/(dashboard)/dashboard/staff/page.tsx` entre `main` e `claude/elastic-franklin` — precisa resolver antes do merge final
 
 ---
 
