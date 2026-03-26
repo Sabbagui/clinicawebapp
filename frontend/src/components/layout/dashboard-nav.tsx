@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { LayoutDashboard, Users, Calendar, CalendarCheck, UserCog, LogOut, BarChart3, ShieldCheck, Wallet } from 'lucide-react';
 import { UserRole } from '@/types';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 interface NavItem {
   href: string;
@@ -80,6 +81,7 @@ export function DashboardNav() {
             <span className="text-sm text-muted-foreground hidden md:inline">
               {user?.name}
             </span>
+            <ThemeToggle />
             <Button onClick={logout} variant="ghost" size="sm" className="gap-2">
               <LogOut className="h-4 w-4" />
               <span className="hidden sm:inline">Sair</span>
