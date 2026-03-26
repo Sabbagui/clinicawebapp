@@ -110,6 +110,30 @@ export interface MedicalRecord {
   updatedAt: string;
 }
 
+// Expenses
+export type ExpenseCategory = 'RENT' | 'UTILITIES' | 'SALARY' | 'SUPPLIES' | 'EQUIPMENT' | 'MARKETING' | 'OTHER';
+
+export interface Expense {
+  id: string;
+  description: string;
+  amount: number;
+  category: ExpenseCategory;
+  date: string;
+  notes?: string;
+  receiptPath?: string;
+  createdById: string;
+  createdBy?: { id: string; name: string };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExpenseExtractedData {
+  amountCents: number | null;
+  date: string | null;
+  description: string | null;
+  category: ExpenseCategory | null;
+}
+
 // Payments
 export enum PaymentMethod {
   PIX = 'PIX',

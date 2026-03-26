@@ -78,6 +78,9 @@ export interface FinanceSummary {
     cancelledCount: number;
     noShowCount: number;
     cancelledApptCount: number;
+    expensesTotalCents: number;
+    expensesCount: number;
+    profitCents: number;
   };
   series: {
     dailyReceived: Array<{ date: string; cents: number; count: number }>;
@@ -99,6 +102,7 @@ export interface FinanceSummary {
       countPaid: number;
       countPending: number;
     }>;
+    byExpenseCategory: Array<{ category: string; totalCents: number; count: number }>;
   };
   topPending: Array<{
     appointmentId: string;
