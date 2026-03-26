@@ -160,26 +160,26 @@ export default function FinancePage() {
               value={formatBRLFromCents(data.kpis.receivedCents)}
               sub={`${data.kpis.paidCount} pagos • data efetiva do pagamento`}
               tooltip="Baseado na data efetiva do pagamento"
-              color="bg-emerald-100 text-emerald-700"
+              color="bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
             />
             <KpiCard
               label="Pendente"
               value={formatBRLFromCents(data.kpis.pendingCents)}
               sub={`${data.kpis.pendingCount} pendentes • data da consulta`}
               tooltip="Baseado na data da consulta"
-              color="bg-amber-100 text-amber-700"
+              color="bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300"
             />
             <KpiCard
               label="Reembolsado"
               value={formatBRLFromCents(data.kpis.refundedCents)}
               sub={`${data.kpis.refundedCount} reembolsos`}
-              color="bg-slate-100 text-slate-700"
+              color="bg-slate-100 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300"
             />
             <KpiCard
               label="Cancelado"
               value={formatBRLFromCents(data.kpis.cancelledCents)}
               sub={`${data.kpis.cancelledCount} pagamentos`}
-              color="bg-red-100 text-red-700"
+              color="bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300"
             />
           </div>
 

@@ -31,10 +31,10 @@ import {
 } from 'lucide-react';
 
 const ROLE_CONFIG: Record<string, { label: string; color: string }> = {
-  ADMIN: { label: 'Administrador', color: 'bg-purple-100 text-purple-700' },
-  DOCTOR: { label: 'MÃ©dico(a)', color: 'bg-blue-100 text-blue-700' },
-  NURSE: { label: 'Enfermeiro(a)', color: 'bg-green-100 text-green-700' },
-  RECEPTIONIST: { label: 'Recepcionista', color: 'bg-amber-100 text-amber-700' },
+  ADMIN: { label: 'Administrador', color: 'bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300' },
+  DOCTOR: { label: 'MÃ©dico(a)', color: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300' },
+  NURSE: { label: 'Enfermeiro(a)', color: 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300' },
+  RECEPTIONIST: { label: 'Recepcionista', color: 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300' },
 };
 
 const ROLE_FILTER_OPTIONS = [
@@ -46,7 +46,7 @@ const ROLE_FILTER_OPTIONS = [
 ];
 
 function RoleBadge({ role }: { role: string }) {
-  const cfg = ROLE_CONFIG[role] ?? { label: role, color: 'bg-gray-100 text-gray-700' };
+  const cfg = ROLE_CONFIG[role] ?? { label: role, color: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300' };
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${cfg.color}`}>
       {cfg.label}
@@ -256,8 +256,8 @@ export default function StaffPage() {
                       className={cn(
                         'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
                         member.isActive
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-red-100 text-red-700',
+                          ? 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300'
+                          : 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300',
                       )}
                     >
                       {member.isActive ? 'Ativo' : 'Inativo'}
