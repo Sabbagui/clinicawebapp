@@ -1,11 +1,10 @@
 import {
   Injectable,
   NotFoundException,
-  ServiceUnavailableException,
 } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
-import Anthropic from '@anthropic-ai/sdk';
+import pdfParse from 'pdf-parse';
 import { ExpenseCategory } from '@prisma/client';
 import { PrismaService } from '@/common/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -223,93 +222,34 @@ export class ExpensesService {
   }
 
   async extractReceipt(file: Express.Multer.File) {
-    if (!process.env.ANTHROPIC_API_KEY) {
-      // Clean up temp file before throwing
-      try { fs.unlinkSync(file.path); } catch { /* ignore */ }
-      throw new ServiceUnavailableException('Anthropic API key not configured');
-    }
-
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-    let result: {
+    const result: {
       amountCents: number | null;
       date: string | null;
       description: string | null;
       category: ExpenseCategory | null;
-    } = {
-      amountCents: null,
-      date: null,
-      description: null,
-      category: null,
-    };
+    } = { amountCents: null, date: null, description: null, category: null };
 
     try {
-      const buffer = fs.readFileSync(file.path);
-      const base64 = buffer.toString('base64');
-
-      const isPdf = file.mimetype === 'application/pdf';
-
-      const contentBlock = isPdf
-        ? ({
-            type: 'document' as const,
-            source: {
-              type: 'base64' as const,
-              media_type: 'application/pdf' as const,
-              data: base64,
-            },
-          })
-        : ({
-            type: 'image' as const,
-            source: {
-              type: 'base64' as const,
-              media_type: file.mimetype as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
-              data: base64,
-            },
-          });
-
-      const response = await client.messages.create({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 500,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              contentBlock,
-              {
-                type: 'text',
-                text: `Analyze this receipt/document and extract expense data. Return ONLY valid JSON with these fields:
-- amountCents: integer in centavos (BRL), null if not found
-- date: string in YYYY-MM-DD format, null if not found
-- description: brief description of the expense, null if not found
-- category: one of RENT, UTILITIES, SALARY, SUPPLIES, EQUIPMENT, MARKETING, OTHER, or null if unclear
-
-Return ONLY the JSON object, no extra text.`,
-              },
-            ],
-          },
-        ],
-      });
-
-      const text = response.content
-        .filter((block) => block.type === 'text')
-        .map((block) => (block as { type: 'text'; text: string }).text)
-        .join('');
-
-      try {
-        // Extract JSON from response (in case model adds extra text)
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          result = {
-            amountCents: typeof parsed.amountCents === 'number' ? parsed.amountCents : null,
-            date: typeof parsed.date === 'string' ? parsed.date : null,
-            description: typeof parsed.description === 'string' ? parsed.description : null,
-            category: this.isValidCategory(parsed.category) ? parsed.category : null,
-          };
-        }
-      } catch {
-        // Return nulls on parse error
+      if (file.mimetype !== 'application/pdf') {
+        // Images require OCR — not supported without external service
+        return result;
       }
+
+      const buffer = fs.readFileSync(file.path);
+      const parsed = await pdfParse(buffer);
+      const text = parsed.text;
+
+      if (!text || text.trim().length < 10) {
+        // Scanned PDF — no embedded text
+        return result;
+      }
+
+      result.amountCents = this.extractAmount(text);
+      result.date = this.extractDate(text);
+      result.description = this.extractDescription(text);
+      result.category = null; // category requires semantic understanding
+    } catch {
+      // Return nulls on any error
     } finally {
       try { fs.unlinkSync(file.path); } catch { /* ignore */ }
     }
@@ -317,8 +257,60 @@ Return ONLY the JSON object, no extra text.`,
     return result;
   }
 
-  private isValidCategory(value: unknown): value is ExpenseCategory {
-    return typeof value === 'string' && Object.values(ExpenseCategory).includes(value as ExpenseCategory);
+  private extractAmount(text: string): number | null {
+    // Priority: look for TOTAL or VALOR lines first, then any R$ amount
+    const patterns = [
+      /(?:total|valor total|vl\.?\s*total|grand total)[^\d\n]*?([\d.,]+)/gi,
+      /r\$\s*([\d.]+,\d{2})/gi,
+      /(?:valor|vl\.?)[^\d\n]*?([\d.]+,\d{2})/gi,
+    ];
+
+    for (const pattern of patterns) {
+      pattern.lastIndex = 0;
+      const match = pattern.exec(text);
+      if (match) {
+        const cents = this.parseBRLToCents(match[1]);
+        if (cents !== null && cents > 0) return cents;
+      }
+    }
+    return null;
+  }
+
+  private parseBRLToCents(str: string): number | null {
+    // Brazilian format: 1.234,56 → 123456
+    const cleaned = str.replace(/\./g, '').replace(',', '.');
+    const value = parseFloat(cleaned);
+    if (isNaN(value) || value <= 0) return null;
+    return Math.round(value * 100);
+  }
+
+  private extractDate(text: string): string | null {
+    // dd/mm/yyyy
+    const dmyMatch = text.match(/\b(\d{2})\/(\d{2})\/(\d{4})\b/);
+    if (dmyMatch) {
+      const [, day, month, year] = dmyMatch;
+      const date = new Date(`${year}-${month}-${day}`);
+      if (!isNaN(date.getTime())) return `${year}-${month}-${day}`;
+    }
+
+    // yyyy-mm-dd
+    const isoMatch = text.match(/\b(\d{4})-(\d{2})-(\d{2})\b/);
+    if (isoMatch) {
+      const [, year, month, day] = isoMatch;
+      const date = new Date(`${year}-${month}-${day}`);
+      if (!isNaN(date.getTime())) return `${year}-${month}-${day}`;
+    }
+
+    return null;
+  }
+
+  private extractDescription(text: string): string | null {
+    // Take first non-empty line with at least 4 chars as the document title/vendor
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length >= 4);
+    if (lines.length > 0) {
+      return lines[0].substring(0, 100);
+    }
+    return null;
   }
 
   private async getExpenseOrThrow(id: string) {
