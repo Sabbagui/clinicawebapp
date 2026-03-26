@@ -111,13 +111,20 @@ export interface MedicalRecord {
 }
 
 // Expenses
-export type ExpenseCategory = 'RENT' | 'UTILITIES' | 'SALARY' | 'SUPPLIES' | 'EQUIPMENT' | 'MARKETING' | 'OTHER';
+export interface ExpenseCategory {
+  id: string;
+  name: string;
+  label: string;
+  isDefault: boolean;
+  isActive: boolean;
+}
 
 export interface Expense {
   id: string;
   description: string;
   amount: number;
-  category: ExpenseCategory;
+  categoryId: string;
+  category?: ExpenseCategory;
   date: string;
   notes?: string;
   receiptPath?: string;
@@ -131,7 +138,6 @@ export interface ExpenseExtractedData {
   amountCents: number | null;
   date: string | null;
   description: string | null;
-  category: ExpenseCategory | null;
 }
 
 // Payments

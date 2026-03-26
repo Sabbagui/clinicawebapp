@@ -15,6 +15,7 @@ import { AuditModule } from './modules/audit/audit.module';
 import { DoctorScheduleModule } from './modules/doctor-schedule/doctor-schedule.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ExpensesModule } from './modules/expenses/expenses.module';
+import { ExpenseCategoriesModule } from './modules/expense-categories/expense-categories.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { ExpensesModule } from './modules/expenses/expenses.module';
     DoctorScheduleModule,
     NotificationsModule,
     ExpensesModule,
+    ExpenseCategoriesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

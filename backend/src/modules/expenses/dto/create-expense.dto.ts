@@ -1,9 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsInt, IsOptional, IsString, Matches, MaxLength, Min, MinLength } from 'class-validator';
-import { ExpenseCategory } from '@prisma/client';
+import { IsInt, IsOptional, IsString, IsUUID, Matches, MaxLength, Min, MinLength } from 'class-validator';
 
 export class CreateExpenseDto {
-  @ApiProperty({ description: 'Descrição da despesa' })
+  @ApiProperty()
   @IsString()
   @MinLength(1)
   @MaxLength(255)
@@ -14,9 +13,9 @@ export class CreateExpenseDto {
   @Min(1)
   amount: number;
 
-  @ApiProperty({ enum: ExpenseCategory })
-  @IsEnum(ExpenseCategory)
-  category: ExpenseCategory;
+  @ApiProperty({ description: 'ID da categoria de despesa' })
+  @IsString()
+  categoryId: string;
 
   @ApiProperty({ description: 'Data da despesa (YYYY-MM-DD)' })
   @IsString()

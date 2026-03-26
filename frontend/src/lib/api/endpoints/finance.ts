@@ -102,7 +102,7 @@ export interface FinanceSummary {
       countPaid: number;
       countPending: number;
     }>;
-    byExpenseCategory: Array<{ category: string; totalCents: number; count: number }>;
+    byExpenseCategory: Array<{ categoryId: string; category: string; totalCents: number; count: number }>;
   };
   topPending: Array<{
     appointmentId: string;

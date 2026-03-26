@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
   AppointmentStatus,
-  ExpenseCategory,
   PaymentMethod,
   PaymentStatus,
 } from '@prisma/client';
@@ -139,7 +138,11 @@ export class FinanceService {
           where: {
             date: { gte: startUtc, lt: endUtc },
           },
-          select: { amount: true, category: true },
+          select: {
+            amount: true,
+            categoryId: true,
+            category: { select: { id: true, name: true, label: true } },
+          },
         }),
       ]);
 
@@ -244,12 +247,12 @@ export class FinanceService {
     const expensesCount = expenses.length;
     const profitCents = receivedCents - expensesTotalCents;
 
-    const byCategoryMap = new Map<ExpenseCategory, { category: ExpenseCategory; totalCents: number; count: number }>();
+    const byCategoryMap = new Map<string, { categoryId: string; category: string; totalCents: number; count: number }>();
     for (const expense of expenses) {
-      let row = byCategoryMap.get(expense.category);
+      let row = byCategoryMap.get(expense.categoryId);
       if (!row) {
-        row = { category: expense.category, totalCents: 0, count: 0 };
-        byCategoryMap.set(expense.category, row);
+        row = { categoryId: expense.categoryId, category: expense.category.label, totalCents: 0, count: 0 };
+        byCategoryMap.set(expense.categoryId, row);
       }
       row.totalCents += expense.amount;
       row.count += 1;

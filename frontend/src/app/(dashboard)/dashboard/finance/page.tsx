@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Plus, Pencil, Trash2, FileText } from 'lucide-react';
+import { Plus, Pencil, Trash2, FileText, Settings } from 'lucide-react';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { getDoctors, type Doctor } from '@/lib/api/endpoints/users';
 import {
@@ -17,6 +17,12 @@ import {
   uploadExpenseReceipt,
   extractExpenseReceipt,
 } from '@/lib/api/endpoints/expenses';
+import {
+  listExpenseCategories,
+  createExpenseCategory,
+  updateExpenseCategory,
+  deleteExpenseCategory,
+} from '@/lib/api/endpoints/expense-categories';
 import { UserRole, type Expense, type ExpenseCategory } from '@/types';
 import { formatBRLFromCents, formatDateTime } from '@/lib/utils';
 import { Select } from '@/components/ui/select';
@@ -25,26 +31,6 @@ import { Alert } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
-
-const CATEGORY_LABELS: Record<string, string> = {
-  RENT: 'Aluguel',
-  UTILITIES: 'Utilidades',
-  SALARY: 'Salários',
-  SUPPLIES: 'Insumos',
-  EQUIPMENT: 'Equipamentos',
-  MARKETING: 'Marketing',
-  OTHER: 'Outros',
-};
-
-const EXPENSE_CATEGORIES: ExpenseCategory[] = [
-  'RENT',
-  'UTILITIES',
-  'SALARY',
-  'SUPPLIES',
-  'EQUIPMENT',
-  'MARKETING',
-  'OTHER',
-];
 
 function toYmd(date: Date): string {
   const y = date.getFullYear();
@@ -114,13 +100,17 @@ export default function FinancePage() {
   const [expensePage, setExpensePage] = useState(0);
   const EXPENSES_PER_PAGE = 20;
 
+  // Categories state
+  const [categories, setCategories] = useState<ExpenseCategory[]>([]);
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
+
   // Expense form state
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [expenseForm, setExpenseForm] = useState({
     description: '',
     amountBRL: '',
-    category: 'OTHER' as ExpenseCategory,
+    categoryId: '',
     date: new Date().toISOString().split('T')[0],
     notes: '',
   });
@@ -156,6 +146,10 @@ export default function FinancePage() {
     const cats = data.breakdowns.byExpenseCategory ?? [];
     return Math.max(0, ...cats.map((c) => c.totalCents));
   }, [data]);
+
+  const fetchCategories = useCallback(() => {
+    listExpenseCategories(true).then(setCategories).catch(() => {});
+  }, []);
 
   const fetchSummary = useCallback(async () => {
     setIsLoading(true);
@@ -209,19 +203,22 @@ export default function FinancePage() {
     }
   }, [activeTab, fetchExpenses]);
 
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
+
   const handleReceiptFileChange = async (file: File) => {
     setExpenseFile(file);
     setExtracting(true);
     setExtractionBanner(false);
     try {
       const extracted = await extractExpenseReceipt(file);
-      if (extracted.amountCents || extracted.date || extracted.description || extracted.category) {
+      if (extracted.amountCents || extracted.date || extracted.description) {
         setExpenseForm(prev => ({
           ...prev,
           amountBRL: extracted.amountCents ? (extracted.amountCents / 100).toFixed(2) : prev.amountBRL,
           date: extracted.date || prev.date,
           description: extracted.description || prev.description,
-          category: extracted.category || prev.category,
         }));
         setExtractionBanner(true);
       }
@@ -236,7 +233,7 @@ export default function FinancePage() {
     setExpenseForm({
       description: '',
       amountBRL: '',
-      category: 'OTHER',
+      categoryId: categories.length > 0 ? categories[0].id : '',
       date: new Date().toISOString().split('T')[0],
       notes: '',
     });
@@ -250,7 +247,7 @@ export default function FinancePage() {
       const payload = {
         description: expenseForm.description,
         amount: amountCents,
-        category: expenseForm.category,
+        categoryId: expenseForm.categoryId,
         date: expenseForm.date,
         notes: expenseForm.notes || undefined,
       };
@@ -299,7 +296,7 @@ export default function FinancePage() {
     setExpenseForm({
       description: expense.description,
       amountBRL: (expense.amount / 100).toFixed(2),
-      category: expense.category,
+      categoryId: expense.categoryId,
       date: expense.date.split('T')[0],
       notes: expense.notes || '',
     });
@@ -581,8 +578,8 @@ export default function FinancePage() {
                         ? Math.max(2, (item.totalCents / maxExpenseCategoryValue) * 100)
                         : 0;
                       return (
-                        <div key={item.category} className="grid grid-cols-[160px_1fr_110px_60px] gap-2 items-center">
-                          <span className="text-sm">{CATEGORY_LABELS[item.category] ?? item.category}</span>
+                        <div key={item.categoryId} className="grid grid-cols-[160px_1fr_110px_60px] gap-2 items-center">
+                          <span className="text-sm">{item.category}</span>
                           <div className="h-2 bg-muted rounded">
                             <div className="h-2 bg-orange-500 rounded" style={{ width: `${width}%` }} />
                           </div>
@@ -592,6 +589,20 @@ export default function FinancePage() {
                       );
                     })}
                   </div>
+                </div>
+              )}
+
+              {/* Category manager button for ADMIN */}
+              {isAdmin && (
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowCategoryManager(true)}
+                  >
+                    <Settings className="h-4 w-4 mr-1" />
+                    Gerenciar Categorias
+                  </Button>
                 </div>
               )}
 
@@ -629,7 +640,7 @@ export default function FinancePage() {
                           <tr key={expense.id} className="border-b last:border-0">
                             <td className="px-3 py-2 whitespace-nowrap">{formatDateBR(expense.date)}</td>
                             <td className="px-3 py-2">{expense.description}</td>
-                            <td className="px-3 py-2">{CATEGORY_LABELS[expense.category] ?? expense.category}</td>
+                            <td className="px-3 py-2">{expense.category?.label ?? expense.categoryId}</td>
                             <td className="px-3 py-2 text-right whitespace-nowrap">{formatBRLFromCents(expense.amount)}</td>
                             <td className="px-3 py-2 text-center">
                               {expense.receiptPath ? (
@@ -751,14 +762,15 @@ export default function FinancePage() {
           <div>
             <label className="text-sm font-medium">Categoria *</label>
             <Select
-              value={expenseForm.category}
+              value={expenseForm.categoryId}
               onChange={(e) =>
-                setExpenseForm((prev) => ({ ...prev, category: e.target.value as ExpenseCategory }))
+                setExpenseForm((prev) => ({ ...prev, categoryId: e.target.value }))
               }
             >
-              {EXPENSE_CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {CATEGORY_LABELS[cat]}
+              <option value="">Selecione uma categoria</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.label}
                 </option>
               ))}
             </Select>
@@ -841,7 +853,7 @@ export default function FinancePage() {
             </Button>
             <Button
               onClick={handleSaveExpense}
-              disabled={savingExpense || !expenseForm.description || !expenseForm.amountBRL || !expenseForm.date}
+              disabled={savingExpense || !expenseForm.description || !expenseForm.amountBRL || !expenseForm.date || !expenseForm.categoryId}
               className="flex-1"
             >
               {savingExpense ? 'Salvando...' : 'Salvar'}
@@ -849,7 +861,231 @@ export default function FinancePage() {
           </div>
         </div>
       </Dialog>
+
+      {/* Category manager dialog (ADMIN only) */}
+      {isAdmin && (
+        <CategoryManagerDialog
+          open={showCategoryManager}
+          onClose={() => {
+            setShowCategoryManager(false);
+            fetchCategories();
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+function CategoryManagerDialog({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  const [categories, setCategories] = useState<ExpenseCategory[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [newName, setNewName] = useState('');
+  const [newLabel, setNewLabel] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editLabel, setEditLabel] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await listExpenseCategories(false);
+      setCategories(data);
+    } catch {
+      // silent
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (open) {
+      load();
+      setNewName('');
+      setNewLabel('');
+      setError(null);
+      setEditingId(null);
+    }
+  }, [open, load]);
+
+  const handleCreate = async () => {
+    if (!newName.trim() || !newLabel.trim()) return;
+    setCreating(true);
+    setError(null);
+    try {
+      await createExpenseCategory({ name: newName.trim().toUpperCase(), label: newLabel.trim() });
+      setNewName('');
+      setNewLabel('');
+      await load();
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === 'object' && 'response' in err
+          ? ((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao criar categoria')
+          : 'Erro ao criar categoria';
+      setError(msg);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleToggleActive = async (cat: ExpenseCategory) => {
+    try {
+      await updateExpenseCategory(cat.id, { isActive: !cat.isActive });
+      await load();
+    } catch {
+      // silent
+    }
+  };
+
+  const handleSaveLabel = async (id: string) => {
+    if (!editLabel.trim()) return;
+    try {
+      await updateExpenseCategory(id, { label: editLabel.trim() });
+      setEditingId(null);
+      await load();
+    } catch {
+      // silent
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Remover esta categoria?')) return;
+    setError(null);
+    try {
+      await deleteExpenseCategory(id);
+      await load();
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === 'object' && 'response' in err
+          ? ((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao remover categoria')
+          : 'Erro ao remover categoria';
+      setError(msg);
+    }
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} title="Gerenciar Categorias de Despesa">
+      <div className="space-y-4">
+        {error && <Alert variant="destructive">{error}</Alert>}
+
+        {loading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+          </div>
+        ) : (
+          <div className="space-y-2 max-h-64 overflow-auto">
+            {categories.map((cat) => (
+              <div key={cat.id} className="flex items-center gap-2 border rounded p-2">
+                <div className="flex-1 min-w-0">
+                  {editingId === cat.id ? (
+                    <div className="flex gap-2">
+                      <Input
+                        value={editLabel}
+                        onChange={(e) => setEditLabel(e.target.value)}
+                        className="h-7 text-sm"
+                      />
+                      <Button size="sm" onClick={() => handleSaveLabel(cat.id)}>
+                        Salvar
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setEditingId(null)}>
+                        Cancelar
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{cat.label}</span>
+                      <span className="text-xs text-muted-foreground">({cat.name})</span>
+                      {cat.isDefault && (
+                        <span className="text-xs bg-blue-100 text-blue-700 px-1 rounded">padrão</span>
+                      )}
+                      {!cat.isActive && (
+                        <span className="text-xs bg-gray-100 text-gray-500 px-1 rounded">inativa</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {editingId !== cat.id && (
+                  <div className="flex gap-1 shrink-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setEditingId(cat.id);
+                        setEditLabel(cat.label);
+                      }}
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleToggleActive(cat)}
+                      title={cat.isActive ? 'Desativar' : 'Ativar'}
+                    >
+                      {cat.isActive ? 'Desativar' : 'Ativar'}
+                    </Button>
+                    {!cat.isDefault && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDelete(cat.id)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="border-t pt-4">
+          <p className="text-sm font-medium mb-2">Nova Categoria</p>
+          <div className="space-y-2">
+            <div>
+              <label className="text-xs text-muted-foreground">Nome (slug, ex: WATER_BILL)</label>
+              <Input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value.toUpperCase())}
+                placeholder="EX: WATER_BILL"
+                className="h-8 text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Rótulo (exibição)</label>
+              <Input
+                value={newLabel}
+                onChange={(e) => setNewLabel(e.target.value)}
+                placeholder="Ex: Conta de água"
+                className="h-8 text-sm"
+              />
+            </div>
+            <Button
+              size="sm"
+              onClick={handleCreate}
+              disabled={creating || !newName.trim() || !newLabel.trim()}
+            >
+              {creating ? 'Criando...' : 'Criar Categoria'}
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex justify-end pt-2">
+          <Button variant="outline" onClick={onClose}>
+            Fechar
+          </Button>
+        </div>
+      </div>
+    </Dialog>
   );
 }
 

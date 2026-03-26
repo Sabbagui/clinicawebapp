@@ -5,7 +5,6 @@ import {
 import * as fs from 'fs';
 import * as path from 'path';
 import pdfParse from 'pdf-parse';
-import { ExpenseCategory } from '@prisma/client';
 import { PrismaService } from '@/common/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { getRequestAuditMeta } from '@/common/audit/request-audit-meta';
@@ -21,7 +20,7 @@ export class ExpensesService {
   ) {}
 
   async findAll(query: QueryExpenseDto) {
-    const { start, end, category, limit = 50, offset = 0 } = query;
+    const { start, end, categoryId, limit = 50, offset = 0 } = query;
 
     const where: Record<string, unknown> = {};
 
@@ -32,8 +31,8 @@ export class ExpensesService {
       where.date = dateFilter;
     }
 
-    if (category) {
-      where.category = category;
+    if (categoryId) {
+      where.categoryId = categoryId;
     }
 
     const [total, data] = await Promise.all([
@@ -42,6 +41,7 @@ export class ExpensesService {
         where,
         include: {
           createdBy: { select: { id: true, name: true, role: true } },
+          category: { select: { id: true, name: true, label: true } },
         },
         orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
         skip: offset,
@@ -61,13 +61,14 @@ export class ExpensesService {
       data: {
         description: dto.description,
         amount: dto.amount,
-        category: dto.category,
+        categoryId: dto.categoryId,
         date: new Date(dto.date + 'T12:00:00.000Z'),
         notes: dto.notes,
         createdById: actorId,
       },
       include: {
         createdBy: { select: { id: true, name: true, role: true } },
+        category: { select: { id: true, name: true, label: true } },
       },
     });
 
@@ -77,7 +78,7 @@ export class ExpensesService {
       action: 'EXPENSE_CREATE',
       entityType: 'EXPENSE',
       entityId: expense.id,
-      metadata: { description: expense.description, amount: expense.amount, category: expense.category },
+      metadata: { description: expense.description, amount: expense.amount, categoryId: expense.categoryId },
       ip,
       userAgent,
     });
@@ -93,12 +94,13 @@ export class ExpensesService {
       data: {
         ...(dto.description !== undefined ? { description: dto.description } : {}),
         ...(dto.amount !== undefined ? { amount: dto.amount } : {}),
-        ...(dto.category !== undefined ? { category: dto.category } : {}),
+        ...(dto.categoryId !== undefined ? { categoryId: dto.categoryId } : {}),
         ...(dto.date !== undefined ? { date: new Date(dto.date + 'T12:00:00.000Z') } : {}),
         ...(dto.notes !== undefined ? { notes: dto.notes } : {}),
       },
       include: {
         createdBy: { select: { id: true, name: true, role: true } },
+        category: { select: { id: true, name: true, label: true } },
       },
     });
 
@@ -108,7 +110,7 @@ export class ExpensesService {
       action: 'EXPENSE_UPDATE',
       entityType: 'EXPENSE',
       entityId: expense.id,
-      metadata: { description: dto.description, amount: dto.amount, category: dto.category },
+      metadata: { description: dto.description, amount: dto.amount, categoryId: dto.categoryId },
       ip,
       userAgent,
     });
@@ -169,6 +171,7 @@ export class ExpensesService {
       data: { receiptPath: relativePath },
       include: {
         createdBy: { select: { id: true, name: true, role: true } },
+        category: { select: { id: true, name: true, label: true } },
       },
     });
 
@@ -205,6 +208,7 @@ export class ExpensesService {
       data: { receiptPath: null },
       include: {
         createdBy: { select: { id: true, name: true, role: true } },
+        category: { select: { id: true, name: true, label: true } },
       },
     });
 
@@ -226,8 +230,7 @@ export class ExpensesService {
       amountCents: number | null;
       date: string | null;
       description: string | null;
-      category: ExpenseCategory | null;
-    } = { amountCents: null, date: null, description: null, category: null };
+    } = { amountCents: null, date: null, description: null };
 
     try {
       if (file.mimetype !== 'application/pdf') {
@@ -247,7 +250,6 @@ export class ExpensesService {
       result.amountCents = this.extractAmount(text);
       result.date = this.extractDate(text);
       result.description = this.extractDescription(text);
-      result.category = null; // category requires semantic understanding
     } catch {
       // Return nulls on any error
     } finally {
@@ -318,6 +320,7 @@ export class ExpensesService {
       where: { id },
       include: {
         createdBy: { select: { id: true, name: true, role: true } },
+        category: { select: { id: true, name: true, label: true } },
       },
     });
 
