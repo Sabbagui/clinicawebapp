@@ -1,10 +1,10 @@
 import apiClient from '../client';
-import type { Expense, ExpenseCategory, ExpenseExtractedData } from '@/types';
+import type { Expense, ExpenseExtractedData } from '@/types';
 
 export interface CreateExpensePayload {
   description: string;
   amount: number;
-  category: ExpenseCategory;
+  categoryId: string;
   date: string;
   notes?: string;
 }
@@ -14,7 +14,7 @@ export type UpdateExpensePayload = Partial<CreateExpensePayload>;
 export interface ListExpensesParams {
   start?: string;
   end?: string;
-  category?: ExpenseCategory;
+  categoryId?: string;
   limit?: number;
   offset?: number;
 }

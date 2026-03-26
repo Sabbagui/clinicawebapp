@@ -53,17 +53,6 @@ enum PaymentStatus {
   REFUNDED
 }
 
-enum ExpenseCategory {
-  RENT
-  UTILITIES
-  SALARY
-  SUPPLIES
-  EQUIPMENT
-  MARKETING
-  OTHER
-}
-
-
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
@@ -234,11 +223,25 @@ model Payment {
   @@map("payments")
 }
 
+model ExpenseCategory {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  label     String
+  isDefault Boolean   @default(false)
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  expenses  Expense[]
+
+  @@map("expense_categories")
+}
+
 model Expense {
   id          String          @id @default(uuid())
   description String
   amount      Int
-  category    ExpenseCategory
+  categoryId  String
+  category    ExpenseCategory @relation(fields: [categoryId], references: [id])
   date        DateTime        @db.Date
   notes       String?
   receiptPath String?
@@ -248,7 +251,7 @@ model Expense {
   updatedAt   DateTime        @updatedAt
 
   @@index([date])
-  @@index([category, date])
+  @@index([categoryId, date])
   @@map("expenses")
 }
 

@@ -1,7 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ExpenseCategory } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, Matches, Max, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, Matches, Max, Min } from 'class-validator';
 
 export class QueryExpenseDto {
   @ApiProperty({ required: false })
@@ -16,10 +15,10 @@ export class QueryExpenseDto {
   @Matches(/^\d{4}-\d{2}-\d{2}$/)
   end?: string;
 
-  @ApiProperty({ required: false, enum: ExpenseCategory })
+  @ApiProperty({ required: false, description: 'ID da categoria de despesa' })
   @IsOptional()
-  @IsEnum(ExpenseCategory)
-  category?: ExpenseCategory;
+  @IsString()
+  categoryId?: string;
 
   @ApiProperty({ required: false, default: 50 })
   @IsOptional()
