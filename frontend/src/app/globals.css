@@ -4,48 +4,49 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 339 89% 49%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 339 89% 49%;
+    /* Terracota + Verde — Clínica Lorena Sabbagh */
+    --background: 30 20% 97%;
+    --foreground: 18 30% 14%;
+    --card: 30 25% 99%;
+    --card-foreground: 18 30% 14%;
+    --popover: 30 25% 99%;
+    --popover-foreground: 18 30% 14%;
+    --primary: 14 47% 52%;           /* terracota #C1694F */
+    --primary-foreground: 0 0% 98%;
+    --secondary: 143 22% 90%;        /* verde claro */
+    --secondary-foreground: 143 28% 22%;
+    --muted: 30 14% 93%;
+    --muted-foreground: 18 10% 46%;
+    --accent: 143 22% 88%;           /* verde suave */
+    --accent-foreground: 143 28% 22%;
+    --destructive: 0 78% 55%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 30 14% 87%;
+    --input: 30 14% 87%;
+    --ring: 14 47% 52%;
     --radius: 0.5rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 339 89% 49%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 339 89% 49%;
+    --background: 18 25% 7%;
+    --foreground: 30 20% 92%;
+    --card: 18 22% 10%;
+    --card-foreground: 30 20% 92%;
+    --popover: 18 22% 10%;
+    --popover-foreground: 30 20% 92%;
+    --primary: 14 52% 62%;           /* terracota clara para dark */
+    --primary-foreground: 18 25% 8%;
+    --secondary: 143 22% 15%;        /* verde escuro */
+    --secondary-foreground: 143 22% 82%;
+    --muted: 18 16% 16%;
+    --muted-foreground: 30 10% 58%;
+    --accent: 143 22% 15%;
+    --accent-foreground: 143 22% 82%;
+    --destructive: 0 55% 38%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 18 16% 20%;
+    --input: 18 16% 20%;
+    --ring: 14 52% 62%;
   }
 }
 
@@ -56,4 +57,74 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* FullCalendar — dark mode overrides */
+.dark .fc {
+  --fc-border-color: hsl(18, 16%, 20%);
+  --fc-page-bg-color: hsl(18, 22%, 10%);
+  --fc-neutral-bg-color: hsl(18, 22%, 10%);
+  --fc-neutral-text-color: hsl(30, 20%, 92%);
+  --fc-list-event-hover-bg-color: hsl(18, 16%, 16%);
+  color: hsl(30, 20%, 92%);
+}
+
+.dark .fc-theme-standard td,
+.dark .fc-theme-standard th,
+.dark .fc-theme-standard .fc-scrollgrid {
+  border-color: hsl(18, 16%, 20%);
+}
+
+.dark .fc .fc-timegrid-slot,
+.dark .fc .fc-timegrid-slot-lane {
+  background-color: hsl(18, 22%, 10%);
+}
+
+.dark .fc .fc-timegrid-slot-minor {
+  border-color: hsl(18, 16%, 14%);
+}
+
+.dark .fc .fc-col-header-cell {
+  background-color: hsl(18, 20%, 12%);
+  border-color: hsl(18, 16%, 20%);
+}
+
+.dark .fc .fc-col-header-cell-cushion {
+  color: hsl(30, 20%, 92%);
+}
+
+.dark .fc .fc-timegrid-axis {
+  background-color: hsl(18, 20%, 12%);
+  border-color: hsl(18, 16%, 20%);
+}
+
+.dark .fc .fc-timegrid-axis-cushion {
+  color: hsl(30, 10%, 58%);
+}
+
+.dark .fc .fc-scrollgrid-section > td {
+  background-color: hsl(18, 22%, 10%);
+}
+
+.dark .fc .fc-daygrid-day {
+  background-color: hsl(18, 22%, 10%);
+}
+
+.dark .fc .fc-toolbar-title {
+  color: hsl(30, 20%, 92%);
+}
+
+.dark .fc .fc-button {
+  background-color: hsl(18, 16%, 16%);
+  border-color: hsl(18, 16%, 20%);
+  color: hsl(30, 20%, 92%);
+}
+
+.dark .fc .fc-button:hover {
+  background-color: hsl(18, 16%, 20%);
+}
+
+.dark .fc .fc-button-primary:not(:disabled).fc-button-active {
+  background-color: hsl(14, 52%, 62%);
+  border-color: hsl(14, 52%, 55%);
 }

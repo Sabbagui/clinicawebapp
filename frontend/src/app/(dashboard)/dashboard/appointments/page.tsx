@@ -24,13 +24,13 @@ const STATUS_STYLE: Record<
   AppointmentStatus,
   { background: string; border: string; text: string }
 > = {
-  SCHEDULED: { background: '#dbeafe', border: '#60a5fa', text: '#1e3a8a' },
-  CONFIRMED: { background: '#dcfce7', border: '#22c55e', text: '#14532d' },
-  CHECKED_IN: { background: '#fef9c3', border: '#eab308', text: '#854d0e' },
-  IN_PROGRESS: { background: '#ffedd5', border: '#f97316', text: '#9a3412' },
-  COMPLETED: { background: '#e5e7eb', border: '#6b7280', text: '#1f2937' },
-  CANCELLED: { background: '#fee2e2', border: '#ef4444', text: '#991b1b' },
-  NO_SHOW: { background: '#7f1d1d', border: '#450a0a', text: '#ffffff' },
+  SCHEDULED:   { background: '#dbeafe', border: '#3b82f6', text: '#1e3a8a' },
+  CONFIRMED:   { background: '#d4edda', border: '#4d7c5f', text: '#1a3d2b' },
+  CHECKED_IN:  { background: '#fef3c7', border: '#d97706', text: '#78350f' },
+  IN_PROGRESS: { background: '#f5ddd5', border: '#c1694f', text: '#7c2d12' },
+  COMPLETED:   { background: '#f3f4f6', border: '#9ca3af', text: '#374151' },
+  CANCELLED:   { background: '#fee2e2', border: '#ef4444', text: '#991b1b' },
+  NO_SHOW:     { background: '#4a1515', border: '#7f1d1d', text: '#fecaca' },
 };
 
 function todayIsoDate() {
