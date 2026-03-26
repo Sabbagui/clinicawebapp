@@ -14,6 +14,7 @@ import { FinanceModule } from './modules/finance/finance.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { DoctorScheduleModule } from './modules/doctor-schedule/doctor-schedule.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { ExpensesModule } from './modules/expenses/expenses.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     AuditModule,
     DoctorScheduleModule,
     NotificationsModule,
+    ExpensesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

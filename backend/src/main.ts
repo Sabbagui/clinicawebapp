@@ -10,10 +10,18 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // Ensure uploads directory exists
+  // Ensure uploads directories exist
   const uploadsDir = path.join(process.cwd(), 'uploads', 'receipts');
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+  const expenseReceiptsDir = path.join(process.cwd(), 'uploads', 'expense-receipts');
+  if (!fs.existsSync(expenseReceiptsDir)) {
+    fs.mkdirSync(expenseReceiptsDir, { recursive: true });
+  }
+  const tempExtractionsDir = path.join(process.cwd(), 'uploads', 'temp-extractions');
+  if (!fs.existsSync(tempExtractionsDir)) {
+    fs.mkdirSync(tempExtractionsDir, { recursive: true });
   }
 
   // Serve uploaded files at /uploads/*

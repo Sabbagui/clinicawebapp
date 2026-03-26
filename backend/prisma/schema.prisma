@@ -53,6 +53,16 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum ExpenseCategory {
+  RENT
+  UTILITIES
+  SALARY
+  SUPPLIES
+  EQUIPMENT
+  MARKETING
+  OTHER
+}
+
 
 model User {
   id        String   @id @default(uuid())
@@ -71,6 +81,7 @@ model User {
   doctorBlocked       DoctorBlockedSlot[] @relation("DoctorBlocked")
   medicalRecords     MedicalRecord[]
   finalizedRecords   MedicalRecord[] @relation("FinalizedRecords")
+  createdExpenses    Expense[]       @relation("CreatedExpenses")
 
   @@map("users")
 }
@@ -221,6 +232,24 @@ model Payment {
 
   @@index([status])
   @@map("payments")
+}
+
+model Expense {
+  id          String          @id @default(uuid())
+  description String
+  amount      Int
+  category    ExpenseCategory
+  date        DateTime        @db.Date
+  notes       String?
+  receiptPath String?
+  createdById String
+  createdBy   User            @relation("CreatedExpenses", fields: [createdById], references: [id])
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([date])
+  @@index([category, date])
+  @@map("expenses")
 }
 
 model AuditLog {
