@@ -130,6 +130,28 @@ export class PatientsController {
     return patient;
   }
 
+  @Patch(':id/anonymize')
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Anonymize patient data (LGPD)',
+    description: 'Substitui dados pessoais por valores anonimizados. Prontuários e histórico médico são mantidos. Apenas ADMIN.',
+  })
+  async anonymize(@Param('id') id: string, @Request() req) {
+    const patient = await this.patientsService.anonymize(id);
+    const { ip, userAgent } = getRequestAuditMeta(req);
+    await this.auditService.log({
+      actorUserId: req.user.id,
+      actorRole: req.user.role,
+      action: 'PATIENT_ANONYMIZE',
+      entityType: 'PATIENT',
+      entityId: patient.id,
+      metadata: { reason: 'LGPD anonymization request' },
+      ip,
+      userAgent,
+    });
+    return patient;
+  }
+
   @Delete(':id')
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Delete patient' })
