@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAppointmentStore } from '@/lib/stores/appointment-store';
+import { useAppointmentsStore } from '@/lib/stores/appointments-store';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert } from '@/components/ui/alert';
@@ -49,7 +49,7 @@ export default function AppointmentDetailPage({ params }: { params: { id: string
     window.open(url, '_blank', 'noopener,noreferrer');
     setTimeout(() => URL.revokeObjectURL(url), 60000);
   }
-  const { currentAppointment, fetchAppointment, isLoading, error } = useAppointmentStore();
+  const { currentAppointment, fetchAppointment, isLoading, error } = useAppointmentsStore();
   const [payment, setPayment] = useState<Payment | null>(null);
   const [paymentLoading, setPaymentLoading] = useState(true);
   const [paymentError, setPaymentError] = useState<string | null>(null);

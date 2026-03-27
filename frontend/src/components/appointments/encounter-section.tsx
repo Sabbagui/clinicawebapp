@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAppointmentStore } from '@/lib/stores/appointment-store';
+import { useAppointmentsStore } from '@/lib/stores/appointments-store';
 import { getApiErrorMessage, isForbiddenError } from '@/lib/api/error-utils';
 import {
   startEncounter,
@@ -47,7 +47,7 @@ const EMPTY_PRESCRIPTION: Prescription = { drug: '', dosage: '', frequency: '', 
 
 export function EncounterSection({ appointment }: EncounterSectionProps) {
   const router = useRouter();
-  const { fetchAppointment } = useAppointmentStore();
+  const { fetchAppointment } = useAppointmentsStore();
 
   const [record, setRecord] = useState<MedicalRecord | null>(null);
   const [recordLoading, setRecordLoading] = useState(false);
