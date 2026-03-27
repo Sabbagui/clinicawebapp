@@ -106,9 +106,24 @@ services:
     networks:
       - edge
 
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: gynecology-uptime-kuma
+    restart: unless-stopped
+    volumes:
+      - uptime_kuma_data:/app/data
+    ports:
+      - '100.74.93.53:3002:3001'
+    networks:
+      - edge
+    depends_on:
+      frontend:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   uploads_data:
+  uptime_kuma_data:
 
 networks:
   internal:
