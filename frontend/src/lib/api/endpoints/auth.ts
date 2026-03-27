@@ -3,7 +3,13 @@ import type { User } from '@/types';
 
 export interface LoginResponse {
   access_token: string;
+  refresh_token: string;
   user: User;
+}
+
+export interface RefreshResponse {
+  access_token: string;
+  refresh_token: string;
 }
 
 export interface LoginRequest {
@@ -13,9 +19,7 @@ export interface LoginRequest {
 
 /**
  * Authenticate user with email and password
- * @param email User email
- * @param password User password
- * @returns Access token and user data
+ * @returns Access token, refresh token and user data
  */
 export const loginAPI = async (
   email: string,
@@ -29,9 +33,19 @@ export const loginAPI = async (
 };
 
 /**
+ * Exchange a refresh token for a new token pair
+ */
+export const refreshTokenAPI = async (
+  refreshToken: string
+): Promise<RefreshResponse> => {
+  const response = await apiClient.post<RefreshResponse>('/api/auth/refresh', {
+    refresh_token: refreshToken,
+  });
+  return response.data;
+};
+
+/**
  * Get current authenticated user profile
- * Requires valid JWT token in Authorization header
- * @returns Current user data
  */
 export const getMeAPI = async (): Promise<User> => {
   const response = await apiClient.post<User>('/api/auth/me');

@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Request, HttpCode } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, HttpCode, UnauthorizedException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
@@ -17,6 +17,16 @@ export class AuthController {
   @ApiOperation({ summary: 'User login' })
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
+  }
+
+  @Post('refresh')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Refresh access token using refresh token' })
+  async refresh(@Body() body: { refresh_token: string }) {
+    if (!body?.refresh_token) {
+      throw new UnauthorizedException('refresh_token é obrigatório');
+    }
+    return this.authService.refresh(body.refresh_token);
   }
 
   @UseGuards(JwtAuthGuard)
