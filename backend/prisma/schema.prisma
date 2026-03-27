@@ -98,6 +98,11 @@ model Patient {
   emergencyContactRelationship String?
   emergencyContactPhone        String?
 
+  // LGPD consent
+  lgpdConsentGiven Boolean   @default(false)
+  lgpdConsentDate  DateTime?
+  lgpdConsentText  String?
+
   // Soft delete
   isActive  Boolean   @default(true)
   deletedAt DateTime?

@@ -88,6 +88,7 @@ export default function EditPatientPage({ params }: { params: { id: string } }) 
           phone: formatPhone(currentPatient.emergencyContact.phone),
         }
       : undefined,
+    lgpdConsentGiven: true,
   };
 
   return (

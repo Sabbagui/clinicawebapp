@@ -98,6 +98,8 @@ interface PatientAPIRequest {
   emergencyContactName?: string;
   emergencyContactRelationship?: string;
   emergencyContactPhone?: string;
+  // LGPD
+  lgpdConsentGiven: boolean;
 }
 
 /**
@@ -163,6 +165,8 @@ function transformFormToAPI(form: PatientFormData): PatientAPIRequest {
     emergencyContactPhone: form.emergencyContact?.phone
       ? stripFormatting(form.emergencyContact.phone)
       : undefined,
+    // LGPD
+    lgpdConsentGiven: form.lgpdConsentGiven,
   };
 }
 
