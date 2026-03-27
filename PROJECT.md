@@ -12,7 +12,7 @@
 - **Calendário:** FullCalendar (drag-to-reschedule)
 - **PDF:** @react-pdf/renderer
 - **Agendamento de tarefas:** @nestjs/schedule (lembretes)
-- **Autenticação:** JWT + Passport (Local + JWT strategies)
+- **Autenticação:** JWT + Passport (Local + JWT strategies) + refresh token rotation
 
 ---
 
@@ -20,9 +20,10 @@
 
 | Módulo | Responsabilidade |
 |---|---|
-| `auth` | Login (local), emissão de JWT, guard global |
+| `auth` | Login (local), emissão de JWT (access 8h + refresh 7d), guard global, endpoint `/auth/refresh` |
 | `users` | CRUD de usuários/funcionários; soft-delete |
-| `patients` | CRUD de pacientes com CPF, endereço, contato de emergência; soft-delete |
+| `patients` | CRUD de pacientes com CPF, endereço, contato de emergência, consentimento LGPD; soft-delete; endpoint de anonimização |
+| `uploads` | Serve arquivos de `/uploads/*` protegidos por JWT (comprovantes de pagamento e despesas) |
 | `appointments` | Agendamentos com status, tipo, drag-to-reschedule, filtros por data e médico |
 | `doctor-schedule` | Grade de horários disponíveis por dia da semana + bloqueios pontuais |
 | `medical-records` | Prontuários SOAP (subjetivo, objetivo, avaliação, plano), CID-10, prescrições (JSON) |
@@ -69,6 +70,11 @@
 - **2026-03-25:** Módulo de despesas implementado. Despesas são sempre registradas após o pagamento (sem status pendente/pago). Categorias gerenciáveis por admin/recepcionista. Extração de dados de PDF via `pdf-parse` (sem LLM). Comprovante opcional.
 - **2026-03-25:** Dark mode implementado com `next-themes`. Toggle no header. Nova paleta de marca: terracota (`hsl(14 47% 52%)`) + verde sage. CSS variables em `globals.css`. FullCalendar requer overrides CSS específicos (`.dark .fc-*`) pois injeta seu próprio CSS.
 - **2026-03-25:** Cores dos status de agendamento no calendário ajustadas para nova paleta terracota/sage.
+- **2026-03-26:** Rate limiting no login: 5 tentativas por minuto via `@nestjs/throttler`. Swagger desabilitado em `NODE_ENV=production`. Arquivos de upload (`/uploads/*`) protegidos por JWT via `UploadsController`.
+- **2026-03-26:** Volume Docker `uploads_data` adicionado ao `docker-compose.prod.yml` para persistir comprovantes entre rebuilds.
+- **2026-03-27:** Requisitos mínimos de LGPD implementados: consentimento obrigatório no cadastro de paciente (checkbox + timestamp), endpoint `PATCH /patients/:id/anonymize` (ADMIN only) com audit log. Migration `20260327000000_add_lgpd_consent`.
+- **2026-03-27:** Índice `[reminderSent, scheduledDate]` adicionado em `appointments` para otimizar cron de lembretes. Migration `20260327010000_add_reminder_sent_index`.
+- **2026-03-27:** Refresh token implementado: access token expira em 8h, refresh token em 7d com `JWT_REFRESH_SECRET` separado. Frontend renova automaticamente via interceptor Axios sem re-login. Scripts de backup PostgreSQL criados em `scripts/backup-db.sh` e `scripts/restore-db.sh`.
 
 ---
 
@@ -87,7 +93,7 @@
 ### Modelos principais
 
 - **User** — funcionários e médicos
-- **Patient** — pacientes com CPF (único), endereço completo, contato de emergência
+- **Patient** — pacientes com CPF (único), endereço completo, contato de emergência, campos LGPD (`lgpdConsentGiven`, `lgpdConsentDate`, `lgpdConsentText`)
 - **Appointment** — agendamentos com constraint única `(doctorId, date, startTime)`
 - **DoctorSchedule** — grade semanal por médico; único por `(doctorId, dayOfWeek)`
 - **DoctorBlockedSlot** — bloqueios pontuais de horário
@@ -101,14 +107,10 @@
 
 ## Bugs conhecidos / pendências técnicas
 
-- [ ] Login retornando HTTP 201 ao invés de 200 (comportamento padrão NestJS para POST — pode precisar de `@HttpCode(200)` no controller)
 - [ ] Permissões de médico (`DOCTOR`) não estão sendo enforced em todas as rotas — guard de role faltando em alguns endpoints
 - [ ] Busca de pacientes pode não filtrar corretamente em alguns cenários (verificar query de `patients.service`)
-- [ ] Prontuário: auto-resolução de status não está funcionando (transição `DRAFT → FINAL` automática)
 - [ ] Reminders: confirmar se o webhook de WhatsApp está sendo chamado corretamente em produção
 - [ ] Tela de receivables (`/dashboard/receivables`): validar se os filtros de período estão alinhados com `finance.service`
-- [ ] Cards KPI "Despesas" e "Resultado" na página Financeiro ainda com cores pastel claras no dark mode (faltam classes `dark:` — merge conflict pendente em `staff/page.tsx` impediu o push)
-- [ ] Merge conflict em `frontend/src/app/(dashboard)/dashboard/staff/page.tsx` entre `main` e `claude/elastic-franklin` — precisa resolver antes do merge final
 
 ---
 
@@ -122,7 +124,8 @@
 | `POSTGRES_PASSWORD` | Senha do PostgreSQL |
 | `POSTGRES_DB` | Nome do banco de dados |
 | `DATABASE_URL` | Connection string completa do Prisma |
-| `JWT_SECRET` | Secret para assinar tokens JWT |
+| `JWT_SECRET` | Secret para assinar access tokens JWT |
+| `JWT_REFRESH_SECRET` | Secret para assinar refresh tokens JWT (separado do JWT_SECRET) |
 | `FRONTEND_PORT` | Porta do frontend (padrão: 3000) |
 | `BACKEND_PORT` | Porta do backend (padrão: 3001) |
 | `NEXT_PUBLIC_API_URL` | URL da API acessível pelo browser |
@@ -134,7 +137,8 @@
 | Variável | Descrição |
 |---|---|
 | `DATABASE_URL` | Connection string Prisma |
-| `JWT_SECRET` | Secret JWT |
+| `JWT_SECRET` | Secret JWT (access token, expira em 8h) |
+| `JWT_REFRESH_SECRET` | Secret JWT para refresh tokens (expira em 7d) |
 | `PORT` | Porta do servidor NestJS (padrão: 3001) |
 | `TZ` | Timezone (America/Sao_Paulo) |
 | `WHATSAPP_WEBHOOK_URL` | URL do webhook de WhatsApp (opcional) |
@@ -193,6 +197,11 @@ backend/src/modules/notifications/    # Lembretes WhatsApp
 backend/src/modules/audit/            # Auditoria global
 frontend/src/app/(dashboard)/         # Páginas do painel
 frontend/src/components/              # Componentes React
+frontend/src/lib/api/client.ts        # Axios client com interceptor de refresh token
+frontend/src/lib/stores/auth-store.ts # Zustand store de autenticação
 docker-compose.prod.yml               # Deploy de produção
+scripts/backup-db.sh                  # Backup automático do PostgreSQL
+scripts/restore-db.sh                 # Restore de backup
+BACKUP-SETUP.md                       # Instruções de configuração do cron de backup
 .env.example                          # Modelo de variáveis de ambiente
 ```
