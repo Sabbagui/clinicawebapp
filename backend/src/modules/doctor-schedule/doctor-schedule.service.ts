@@ -1,9 +1,12 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { AppointmentStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '@/common/prisma/prisma.service';
 import { CreateBlockedSlotDto } from './dto/create-blocked-slot.dto';
@@ -53,7 +56,20 @@ function toDateOnlyDate(dateOnly: string): Date {
 
 @Injectable()
 export class DoctorScheduleService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private readonly cache: Cache,
+  ) {}
+
+  /** Remove todas as entradas de cache de slots para um médico específico. */
+  private async invalidateDoctorSlots(doctorId: string): Promise<void> {
+    const store = this.cache.store as { keys: () => Promise<string[]> };
+    const keys = await store.keys();
+    const toDelete = keys.filter((k) => k.startsWith(`slots:${doctorId}:`));
+    if (toDelete.length > 0) {
+      await Promise.all(toDelete.map((k) => this.cache.del(k)));
+    }
+  }
 
   private validateEntry(entry: WeeklyScheduleEntryDto) {
     const start = parseHHMM(entry.startTime);
@@ -138,7 +154,7 @@ export class DoctorScheduleService {
 
     await this.validateFutureAppointmentConflicts(doctorId, dto.entries);
 
-    return this.prisma.$transaction(
+    const result = await this.prisma.$transaction(
       dto.entries.map((entry) =>
         this.prisma.doctorSchedule.upsert({
           where: { doctorId_dayOfWeek: { doctorId, dayOfWeek: entry.dayOfWeek } },
@@ -159,6 +175,8 @@ export class DoctorScheduleService {
         }),
       ),
     );
+    await this.invalidateDoctorSlots(doctorId);
+    return result;
   }
 
   async createBlockedSlot(dto: CreateBlockedSlotDto) {
@@ -185,7 +203,7 @@ export class DoctorScheduleService {
       throw new ConflictException('Bloqueio conflita com agendamento existente.');
     }
 
-    return this.prisma.doctorBlockedSlot.create({
+    const result = await this.prisma.doctorBlockedSlot.create({
       data: {
         doctorId: dto.doctorId,
         date: toDateOnlyDate(dateOnly),
@@ -194,11 +212,15 @@ export class DoctorScheduleService {
         reason: dto.reason,
       },
     });
+    await this.invalidateDoctorSlots(dto.doctorId);
+    return result;
   }
 
   async deleteBlockedSlot(id: string) {
     try {
-      return await this.prisma.doctorBlockedSlot.delete({ where: { id } });
+      const deleted = await this.prisma.doctorBlockedSlot.delete({ where: { id } });
+      await this.invalidateDoctorSlots(deleted.doctorId);
+      return deleted;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
         throw new NotFoundException('Bloqueio não encontrado.');

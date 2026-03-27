@@ -2,9 +2,12 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import {
   AppointmentStatus,
   AppointmentType,
@@ -124,9 +127,14 @@ function slotOverlaps(a: TimeSlot, b: TimeSlot): boolean {
   return a.startMinutes < b.endMinutes && a.endMinutes > b.startMinutes;
 }
 
+const SLOTS_CACHE_TTL_MS = 120_000; // 2 minutos
+
 @Injectable()
 export class AppointmentsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private readonly cache: Cache,
+  ) {}
 
   private async validateDoctorSchedule(
     doctorId: string,
@@ -400,6 +408,11 @@ export class AppointmentsService {
 
   async getAvailableSlots(doctorId: string, date: string) {
     const dateOnly = parseDateOnly(date);
+    const cacheKey = `slots:${doctorId}:${dateOnly}`;
+
+    const cached = await this.cache.get<Array<{ startTime: string; endTime: string }>>(cacheKey);
+    if (cached) return cached;
+
     const dayOfWeek = toDateOnlyDate(dateOnly).getUTCDay();
     const schedule = await this.prisma.doctorSchedule.findUnique({
       where: { doctorId_dayOfWeek: { doctorId, dayOfWeek } },
@@ -444,13 +457,16 @@ export class AppointmentsService {
       endMinutes: timeDateToMinutes(b.endTime),
     }));
 
-    return possibleSlots
+    const result = possibleSlots
       .filter((slot) => !occupied.some((busy) => slotOverlaps(slot, busy)))
       .filter((slot) => !blockedSlots.some((busy) => slotOverlaps(slot, busy)))
       .map((slot) => ({
         startTime: minutesToHHMM(slot.startMinutes),
         endTime: minutesToHHMM(slot.endMinutes),
       }));
+
+    await this.cache.set(cacheKey, result, SLOTS_CACHE_TTL_MS);
+    return result;
   }
 
   async getDailyOverview(date: string) {

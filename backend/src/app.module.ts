@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { CacheModule } from '@nestjs/cache-manager';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -21,6 +22,10 @@ import { UploadsModule } from './modules/uploads/uploads.module';
 
 @Module({
   imports: [
+    CacheModule.register({
+      isGlobal: true,
+      ttl: 120_000, // 120 segundos em ms (cache-manager v5 usa milissegundos)
+    }),
     ConfigModule.forRoot({
       isGlobal: true,
     }),
