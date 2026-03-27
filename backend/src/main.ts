@@ -24,11 +24,7 @@ async function bootstrap() {
     fs.mkdirSync(tempExtractionsDir, { recursive: true });
   }
 
-  // Serve uploaded files at /uploads/*
-  app.useStaticAssets(path.join(process.cwd(), 'uploads'), {
-    prefix: '/uploads',
-  });
-  const corsOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000')
+const corsOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000')
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
@@ -59,21 +55,25 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   // Swagger documentation
-  const config = new DocumentBuilder()
-    .setTitle('Gynecology Practice API')
-    .setDescription('API para sistema de gestão de consultório ginecológico')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
+  if (process.env.NODE_ENV !== 'production') {
+    const config = new DocumentBuilder()
+      .setTitle('Gynecology Practice API')
+      .setDescription('API para sistema de gestão de consultório ginecológico')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document);
+  }
 
   const port = process.env.PORT || 3001;
   await app.listen(port, '0.0.0.0');
 
   console.log(`🚀 Application is running on: http://localhost:${port}`);
-  console.log(`📚 Swagger documentation: http://localhost:${port}/api/docs`);
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`📚 Swagger documentation: http://localhost:${port}/api/docs`);
+  }
 }
 
 bootstrap();

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './common/prisma/prisma.module';
@@ -16,12 +17,19 @@ import { DoctorScheduleModule } from './modules/doctor-schedule/doctor-schedule.
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ExpensesModule } from './modules/expenses/expenses.module';
 import { ExpenseCategoriesModule } from './modules/expense-categories/expense-categories.module';
+import { UploadsModule } from './modules/uploads/uploads.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 5,
+      },
+    ]),
     ScheduleModule.forRoot(),
     PrismaModule,
     AuthModule,
@@ -36,6 +44,7 @@ import { ExpenseCategoriesModule } from './modules/expense-categories/expense-ca
     NotificationsModule,
     ExpensesModule,
     ExpenseCategoriesModule,
+    UploadsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

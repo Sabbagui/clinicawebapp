@@ -37,7 +37,18 @@ import { ArrowLeft, Pencil, Clock, User, Stethoscope, FileText, Paperclip, Trash
 
 export default function AppointmentDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, token } = useAuthStore();
+
+  async function openUploadInNewTab(receiptPath: string) {
+    const res = await fetch(`/api/uploads/${receiptPath}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return;
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank', 'noopener,noreferrer');
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
   const { currentAppointment, fetchAppointment, isLoading, error } = useAppointmentStore();
   const [payment, setPayment] = useState<Payment | null>(null);
   const [paymentLoading, setPaymentLoading] = useState(true);
@@ -515,15 +526,14 @@ export default function AppointmentDetailPage({ params }: { params: { id: string
               )}
               {payment.receiptPath ? (
                 <div className="flex items-center gap-3 flex-wrap">
-                  <a
-                    href={`/uploads/${payment.receiptPath}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    type="button"
+                    onClick={() => openUploadInNewTab(payment.receiptPath!)}
                     className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
                   >
                     <ExternalLink className="h-4 w-4" />
                     Ver comprovante
-                  </a>
+                  </button>
                   <label className="inline-flex items-center gap-1 cursor-pointer text-sm text-muted-foreground hover:text-foreground">
                     <Paperclip className="h-4 w-4" />
                     Substituir
