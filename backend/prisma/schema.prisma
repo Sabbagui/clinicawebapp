@@ -147,6 +147,7 @@ model Appointment {
   @@index([patientId])
   @@index([doctorId, date])
   @@index([date, status])
+  @@index([reminderSent, scheduledDate])
   @@map("appointments")
 }
 
