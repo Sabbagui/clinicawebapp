@@ -63,6 +63,8 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+    volumes:
+      - uploads_data:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -106,6 +108,7 @@ services:
 
 volumes:
   postgres_data:
+  uploads_data:
 
 networks:
   internal:
