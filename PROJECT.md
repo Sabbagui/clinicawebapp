@@ -13,6 +13,8 @@
 - **PDF:** @react-pdf/renderer
 - **Agendamento de tarefas:** @nestjs/schedule (lembretes)
 - **Autenticação:** JWT + Passport (Local + JWT strategies) + refresh token rotation
+- **Cache:** @nestjs/cache-manager + cache-manager (in-memory, TTL 120s)
+- **Monitoramento:** Uptime Kuma (self-hosted, Tailscale, porta 3002)
 
 ---
 
@@ -24,8 +26,8 @@
 | `users` | CRUD de usuários/funcionários; soft-delete |
 | `patients` | CRUD de pacientes com CPF, endereço, contato de emergência, consentimento LGPD; soft-delete; endpoint de anonimização |
 | `uploads` | Serve arquivos de `/uploads/*` protegidos por JWT (comprovantes de pagamento e despesas) |
-| `appointments` | Agendamentos com status, tipo, drag-to-reschedule, filtros por data e médico |
-| `doctor-schedule` | Grade de horários disponíveis por dia da semana + bloqueios pontuais |
+| `appointments` | Agendamentos com status, tipo, drag-to-reschedule, filtros por data e médico; `getAvailableSlots` com cache em memória (TTL 120s) |
+| `doctor-schedule` | Grade de horários disponíveis por dia da semana + bloqueios pontuais; invalida cache de slots ao salvar |
 | `medical-records` | Prontuários SOAP (subjetivo, objetivo, avaliação, plano), CID-10, prescrições (JSON) |
 | `payments` | Pagamentos vinculados a consultas; métodos PIX/Dinheiro/Cartão etc. |
 | `finance` | Relatórios financeiros com filtros de período |
@@ -75,6 +77,11 @@
 - **2026-03-27:** Requisitos mínimos de LGPD implementados: consentimento obrigatório no cadastro de paciente (checkbox + timestamp), endpoint `PATCH /patients/:id/anonymize` (ADMIN only) com audit log. Migration `20260327000000_add_lgpd_consent`.
 - **2026-03-27:** Índice `[reminderSent, scheduledDate]` adicionado em `appointments` para otimizar cron de lembretes. Migration `20260327010000_add_reminder_sent_index`.
 - **2026-03-27:** Refresh token implementado: access token expira em 8h, refresh token em 7d com `JWT_REFRESH_SECRET` separado. Frontend renova automaticamente via interceptor Axios sem re-login. Scripts de backup PostgreSQL criados em `scripts/backup-db.sh` e `scripts/restore-db.sh`.
+- **2026-03-27:** Estados de carregamento (`loading.tsx`) e erro (`error.tsx`) adicionados às rotas do dashboard no Next.js 14 App Router — skeleton UI por módulo (dashboard, pacientes, agendamentos, financeiro).
+- **2026-03-27:** `appointment-store.ts` (singular) consolidado em `appointments-store.ts` (plural). Store único exporta `useAppointmentsStore` com API de calendário e API legada unificadas. Arquivo singular deletado.
+- **2026-03-27:** Cache em memória implementado em `getAvailableSlots` (chave `slots:<doctorId>:<date>`, TTL 120s via `@nestjs/cache-manager`). Invalidação automática ao salvar agenda semanal ou bloqueio de horário.
+- **2026-03-27:** Cobertura de testes unitários expandida — 21 testes passando nos módulos `appointments`, `medical-records` e `finance`. Incluídos cenários de `ConflictException`, `ForbiddenException`, `BadRequestException` e transições de status inválidas.
+- **2026-03-27:** Uptime Kuma adicionado ao `docker-compose.prod.yml` (imagem `louislam/uptime-kuma:1`, rede `edge`, porta `100.74.93.53:3002`). Deployado no servidor. Monitores configurados: Frontend (`http://frontend:3000`) e API Health (`http://backend:3001/api/health`).
 
 ---
 
@@ -107,10 +114,16 @@
 
 ## Bugs conhecidos / pendências técnicas
 
-- [ ] Permissões de médico (`DOCTOR`) não estão sendo enforced em todas as rotas — guard de role faltando em alguns endpoints
+- [x] Permissões de médico (`DOCTOR`) não enforced — **resolvido** (todos os controllers auditados e corretos)
+- [x] Prontuário: transição `DRAFT → FINAL` — **resolvido** (botão Finalizar corrigido no `encounter-section.tsx`)
+- [x] Cards KPI dark mode — **resolvido** (classes `dark:` aplicadas na página Financeiro)
+- [x] Merge conflict `staff/page.tsx` — **resolvido**
 - [ ] Busca de pacientes pode não filtrar corretamente em alguns cenários (verificar query de `patients.service`)
 - [ ] Reminders: confirmar se o webhook de WhatsApp está sendo chamado corretamente em produção
 - [ ] Tela de receivables (`/dashboard/receivables`): validar se os filtros de período estão alinhados com `finance.service`
+- [x] Dois stores duplicados de appointments — **resolvido** (`appointment-store.ts` removido, `useAppointmentsStore` unificado)
+- [x] Sem `error.tsx` e `loading.tsx` nas rotas do dashboard — **resolvido** (skeleton UI adicionado em 4 rotas)
+- [x] `getAvailableSlots()` sem cache — **resolvido** (cache em memória TTL 120s + invalidação automática)
 
 ---
 
@@ -177,31 +190,22 @@ cd backend && npm run prisma:generate
 docker-compose -f docker-compose.prod.yml logs -f backend
 
 # Incluir PgAdmin em produção (opcional)
-docker-compose -f docker-compose.prod.yml -f docker-compose.prod.admin.v1.yml up -d
+docker-compose -f docker-compose.prod.yml -f docker-compose.prod.admin.v1.yml up -d pgadmin
+
+# Atualizar Uptime Kuma
+docker compose -f docker-compose.prod.yml pull uptime-kuma
+docker compose -f docker-compose.prod.yml up -d --no-deps uptime-kuma
 ```
 
 ---
 
-## Arquivos-chave do projeto
+## Monitoramento (Uptime Kuma)
 
-```
-backend/prisma/schema.prisma           # Schema do banco
-backend/src/app.module.ts              # Módulo raiz (importa todos)
-backend/src/main.ts                    # Entry point NestJS
-backend/src/modules/auth/             # Autenticação JWT
-backend/src/modules/appointments/     # Agendamentos
-backend/src/modules/patients/         # Pacientes
-backend/src/modules/medical-records/  # Prontuários SOAP
-backend/src/modules/doctor-schedule/  # Grade de horários
-backend/src/modules/notifications/    # Lembretes WhatsApp
-backend/src/modules/audit/            # Auditoria global
-frontend/src/app/(dashboard)/         # Páginas do painel
-frontend/src/components/              # Componentes React
-frontend/src/lib/api/client.ts        # Axios client com interceptor de refresh token
-frontend/src/lib/stores/auth-store.ts # Zustand store de autenticação
-docker-compose.prod.yml               # Deploy de produção
-scripts/backup-db.sh                  # Backup automático do PostgreSQL
-scripts/restore-db.sh                 # Restore de backup
-BACKUP-SETUP.md                       # Instruções de configuração do cron de backup
-.env.example                          # Modelo de variáveis de ambiente
-```
+- **URL:** `http://100.74.93.53:3002` (acessível apenas via Tailscale)
+- **Container:** `gynecology-uptime-kuma` na rede `edge`
+- **Dados persistidos:** volume `uptime_kuma_data`
+
+| Monitor | URL monitorada | Intervalo |
+|---|---|---|
+| Clinica App - Frontend | `http://frontend:3000` | 60 s |
+| Clinica App - API Health | `http://backend:3001/api/health` | 60 s |
