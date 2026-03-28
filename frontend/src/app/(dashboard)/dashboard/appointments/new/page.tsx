@@ -11,13 +11,14 @@ import { useState } from 'react';
 
 export default function NewAppointmentPage() {
   const router = useRouter();
-  const { addAppointment } = useAppointmentsStore();
+  const { addAppointment, setSelectedDate } = useAppointmentsStore();
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (data: AppointmentFormData) => {
     try {
       setError(null);
       await addAppointment(data);
+      setSelectedDate(data.date);
       router.push('/dashboard/appointments');
     } catch (err: any) {
       if (err.response?.status === 409) {
