@@ -90,7 +90,7 @@ export class PdfBuilderService {
 
     this.drawReceitaSimplesPage(doc, data, qrBuffer);
 
-    pdfkitAddPlaceholder({ pdf: doc as any, reason: 'Assinatura digital ICP-Brasil' });
+    pdfkitAddPlaceholder({ pdf: doc as any, reason: 'Assinatura digital ICP-Brasil' } as any);
     return streamToBuffer(doc);
   }
 
@@ -193,7 +193,7 @@ export class PdfBuilderService {
     doc.addPage();
     this.drawReceitaC1Page(doc, data, qrBuffer, '2ª VIA — PACIENTE');
 
-    pdfkitAddPlaceholder({ pdf: doc as any, reason: 'Assinatura digital ICP-Brasil' });
+    pdfkitAddPlaceholder({ pdf: doc as any, reason: 'Assinatura digital ICP-Brasil' } as any);
     return streamToBuffer(doc);
   }
 
