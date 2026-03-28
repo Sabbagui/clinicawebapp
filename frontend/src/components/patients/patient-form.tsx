@@ -326,6 +326,33 @@ export function PatientForm({
         </div>
       </div>
 
+      {/* LGPD Consent */}
+      <div className="space-y-2 p-4 border rounded-lg bg-muted/30">
+        <div className="flex items-start gap-3">
+          <Controller
+            control={control}
+            name="lgpdConsentGiven"
+            render={({ field }) => (
+              <input
+                type="checkbox"
+                id="lgpdConsentGiven"
+                checked={field.value === true}
+                onChange={(e) => field.onChange(e.target.checked || undefined)}
+                className="mt-1 h-4 w-4 rounded border-gray-300 accent-primary"
+              />
+            )}
+          />
+          <Label htmlFor="lgpdConsentGiven" className="text-sm leading-relaxed cursor-pointer">
+            Autorizo o armazenamento e uso dos meus dados de saúde conforme a{' '}
+            <strong>LGPD (Lei 13.709/2018)</strong>. Os dados serão usados exclusivamente para fins
+            de atendimento médico. <span className="text-destructive">*</span>
+          </Label>
+        </div>
+        {errors.lgpdConsentGiven && (
+          <p className="text-sm text-destructive ml-7">{errors.lgpdConsentGiven.message}</p>
+        )}
+      </div>
+
       {/* Form Actions */}
       <div className="flex justify-end gap-4 pt-4 border-t">
         <Button

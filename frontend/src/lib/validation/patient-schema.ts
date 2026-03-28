@@ -113,6 +113,11 @@ export const patientFormSchema = z.object({
     state: stateValidator,
   }),
 
+  // LGPD consent
+  lgpdConsentGiven: z.literal(true, {
+    errorMap: () => ({ message: 'O consentimento LGPD é obrigatório para cadastrar o paciente' }),
+  }),
+
   // Emergency Contact (optional - all fields are optional)
   emergencyContact: z
     .object({

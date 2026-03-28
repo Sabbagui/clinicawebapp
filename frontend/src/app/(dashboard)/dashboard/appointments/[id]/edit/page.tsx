@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAppointmentStore } from '@/lib/stores/appointment-store';
+import { useAppointmentsStore } from '@/lib/stores/appointments-store';
 import { AppointmentForm } from '@/components/appointments/appointment-form';
 import { AppointmentFormData } from '@/lib/validation/appointment-schema';
 import { Alert } from '@/components/ui/alert';
@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 export default function EditAppointmentPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const { currentAppointment, fetchAppointment, editAppointment, isLoading, error } =
-    useAppointmentStore();
+    useAppointmentsStore();
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {

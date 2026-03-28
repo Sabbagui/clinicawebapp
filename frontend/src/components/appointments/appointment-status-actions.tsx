@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { STATUS_TRANSITIONS, STATUS_CONFIG } from '@/lib/constants/appointment-constants';
-import { useAppointmentStore } from '@/lib/stores/appointment-store';
+import { useAppointmentsStore } from '@/lib/stores/appointments-store';
 import { Loader2 } from 'lucide-react';
 
 interface AppointmentStatusActionsProps {
@@ -15,7 +15,7 @@ export function AppointmentStatusActions({
   appointmentId,
   currentStatus,
 }: AppointmentStatusActionsProps) {
-  const { changeStatus } = useAppointmentStore();
+  const { changeStatus } = useAppointmentsStore();
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState<string | null>(null);
 

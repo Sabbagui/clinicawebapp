@@ -2,12 +2,16 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import {
   AppointmentStatus,
   AppointmentType,
+  MedicalRecordStatus,
   Prisma,
   UserRole,
 } from '@prisma/client';
@@ -55,7 +59,7 @@ function parseDateOnly(value: string): string {
 function parseHHMM(value: string): number {
   const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value);
   if (!match) {
-    throw new BadRequestException('HorÃ¡rio invÃ¡lido. Use o formato HH:mm.');
+    throw new BadRequestException('Horário inválido. Use o formato HH:mm.');
   }
   return Number(match[1]) * 60 + Number(match[2]);
 }
@@ -123,9 +127,14 @@ function slotOverlaps(a: TimeSlot, b: TimeSlot): boolean {
   return a.startMinutes < b.endMinutes && a.endMinutes > b.startMinutes;
 }
 
+const SLOTS_CACHE_TTL_MS = 120_000; // 2 minutos
+
 @Injectable()
 export class AppointmentsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private readonly cache: Cache,
+  ) {}
 
   private async validateDoctorSchedule(
     doctorId: string,
@@ -138,13 +147,13 @@ export class AppointmentsService {
     });
 
     if (!schedule || !schedule.isActive) {
-      throw new ConflictException('MÃ©dico sem agenda ativa para este dia.');
+      throw new ConflictException('Médico sem agenda ativa para este dia.');
     }
 
     const scheduleStart = parseHHMM(schedule.startTime);
     const scheduleEnd = parseHHMM(schedule.endTime);
     if (newSlot.startMinutes < scheduleStart || newSlot.endMinutes > scheduleEnd) {
-      throw new ConflictException('HorÃ¡rio fora da jornada configurada do mÃ©dico.');
+      throw new ConflictException('Horário fora da jornada configurada do médico.');
     }
   }
 
@@ -172,7 +181,7 @@ export class AppointmentsService {
         endMinutes: getEndMinutesFromAppointment(appointment),
       };
       if (slotOverlaps(slot, newSlot)) {
-        throw new ConflictException('Conflito de horÃ¡rio: mÃ©dico jÃ¡ possui agendamento neste perÃ­odo.');
+        throw new ConflictException('Conflito de horário: médico já possui agendamento neste período.');
       }
     }
   }
@@ -193,7 +202,7 @@ export class AppointmentsService {
         endMinutes: timeDateToMinutes(item.endTime),
       };
       if (slotOverlaps(slot, newSlot)) {
-        throw new ConflictException('HorÃ¡rio indisponÃ­vel: bloqueio na agenda do mÃ©dico.');
+        throw new ConflictException('Horário indisponível: bloqueio na agenda do médico.');
       }
     }
   }
@@ -207,7 +216,7 @@ export class AppointmentsService {
   private ensureValidTransition(current: AppointmentStatus, next: AppointmentStatus) {
     const allowed = STATUS_TRANSITIONS[current] ?? [];
     if (!allowed.includes(next)) {
-      throw new BadRequestException(`TransiÃ§Ã£o de ${current} para ${next} nÃ£o permitida.`);
+      throw new BadRequestException(`Transição de ${current} para ${next} não permitida.`);
     }
   }
 
@@ -244,7 +253,7 @@ export class AppointmentsService {
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        throw new ConflictException('Conflito de horÃ¡rio: slot jÃ¡ ocupado para este mÃ©dico.');
+        throw new ConflictException('Conflito de horário: slot já ocupado para este médico.');
       }
       throw error;
     }
@@ -303,7 +312,7 @@ export class AppointmentsService {
     });
 
     if (!appointment) {
-      throw new NotFoundException('Agendamento nÃ£o encontrado.');
+      throw new NotFoundException('Agendamento não encontrado.');
     }
 
     return appointment;
@@ -312,7 +321,7 @@ export class AppointmentsService {
   async update(id: string, dto: UpdateAppointmentDto) {
     const current = await this.prisma.appointment.findUnique({ where: { id } });
     if (!current) {
-      throw new NotFoundException('Agendamento nÃ£o encontrado.');
+      throw new NotFoundException('Agendamento não encontrado.');
     }
 
     const doctorId = dto.doctorId ?? current.doctorId;
@@ -370,12 +379,12 @@ export class AppointmentsService {
   ) {
     const current = await this.prisma.appointment.findUnique({ where: { id } });
     if (!current) {
-      throw new NotFoundException('Agendamento nÃ£o encontrado.');
+      throw new NotFoundException('Agendamento não encontrado.');
     }
 
     if (user.role === UserRole.DOCTOR && current.doctorId !== user.id) {
       throw new ForbiddenException(
-        'VocÃª nÃ£o tem permissÃ£o para alterar agendamentos de outro mÃ©dico.',
+        'Você não tem permissão para alterar agendamentos de outro médico.',
       );
     }
 
@@ -399,6 +408,11 @@ export class AppointmentsService {
 
   async getAvailableSlots(doctorId: string, date: string) {
     const dateOnly = parseDateOnly(date);
+    const cacheKey = `slots:${doctorId}:${dateOnly}`;
+
+    const cached = await this.cache.get<Array<{ startTime: string; endTime: string }>>(cacheKey);
+    if (cached) return cached;
+
     const dayOfWeek = toDateOnlyDate(dateOnly).getUTCDay();
     const schedule = await this.prisma.doctorSchedule.findUnique({
       where: { doctorId_dayOfWeek: { doctorId, dayOfWeek } },
@@ -443,13 +457,16 @@ export class AppointmentsService {
       endMinutes: timeDateToMinutes(b.endTime),
     }));
 
-    return possibleSlots
+    const result = possibleSlots
       .filter((slot) => !occupied.some((busy) => slotOverlaps(slot, busy)))
       .filter((slot) => !blockedSlots.some((busy) => slotOverlaps(slot, busy)))
       .map((slot) => ({
         startTime: minutesToHHMM(slot.startMinutes),
         endTime: minutesToHHMM(slot.endMinutes),
       }));
+
+    await this.cache.set(cacheKey, result, SLOTS_CACHE_TTL_MS);
+    return result;
   }
 
   async getDailyOverview(date: string) {
@@ -505,6 +522,118 @@ export class AppointmentsService {
     return this.prisma.appointment.update({
       where: { id },
       data: { status: AppointmentStatus.CANCELLED },
+    });
+  }
+
+  async startEncounter(id: string, user: { id: string; role: UserRole }) {
+    const appointment = await this.prisma.appointment.findUnique({
+      where: { id },
+      include: {
+        patient: { select: { id: true, name: true } },
+        doctor: { select: { id: true, name: true } },
+      },
+    });
+
+    if (!appointment) {
+      throw new NotFoundException('Agendamento não encontrado.');
+    }
+
+    const allowedStatuses: AppointmentStatus[] = [
+      AppointmentStatus.SCHEDULED,
+      AppointmentStatus.CONFIRMED,
+      AppointmentStatus.CHECKED_IN,
+    ];
+    if (!allowedStatuses.includes(appointment.status)) {
+      throw new BadRequestException(
+        'Não é possível iniciar atendimento para um agendamento neste status.',
+      );
+    }
+
+    if (user.role === UserRole.DOCTOR && appointment.doctorId !== user.id) {
+      throw new ForbiddenException(
+        'Você não tem permissão para iniciar atendimento de outro médico.',
+      );
+    }
+
+    const updated = await this.prisma.appointment.update({
+      where: { id },
+      data: { status: AppointmentStatus.IN_PROGRESS },
+      include: {
+        patient: { select: { id: true, name: true } },
+        doctor: { select: { id: true, name: true } },
+      },
+    });
+
+    const existingRecord = await this.prisma.medicalRecord.findUnique({
+      where: { appointmentId: id },
+    });
+    if (!existingRecord) {
+      await this.prisma.medicalRecord.create({
+        data: {
+          appointmentId: id,
+          patientId: appointment.patientId,
+          doctorId: appointment.doctorId,
+          subjective: '',
+          objective: '',
+          assessment: '',
+          plan: '',
+          status: MedicalRecordStatus.DRAFT,
+        },
+      });
+    }
+
+    return updated;
+  }
+
+  async completeEncounter(id: string, user: { id: string; role: UserRole }) {
+    const appointment = await this.prisma.appointment.findUnique({
+      where: { id },
+      include: {
+        medicalRecord: { select: { status: true } },
+        patient: { select: { id: true, name: true } },
+        doctor: { select: { id: true, name: true } },
+      },
+    });
+
+    if (!appointment) {
+      throw new NotFoundException('Agendamento não encontrado.');
+    }
+
+    if (appointment.status !== AppointmentStatus.IN_PROGRESS) {
+      throw new BadRequestException('Agendamento não está em atendimento.');
+    }
+
+    if (user.role === UserRole.DOCTOR && appointment.doctorId !== user.id) {
+      throw new ForbiddenException(
+        'Você não tem permissão para concluir atendimento de outro médico.',
+      );
+    }
+
+    if (!appointment.medicalRecord || appointment.medicalRecord.status !== MedicalRecordStatus.FINAL) {
+      throw new BadRequestException('Finalize o prontuário antes de concluir o atendimento.');
+    }
+
+    return this.prisma.appointment.update({
+      where: { id },
+      data: { status: AppointmentStatus.COMPLETED },
+      include: {
+        patient: { select: { id: true, name: true } },
+        doctor: { select: { id: true, name: true } },
+      },
+    });
+  }
+
+  async getAppointmentMedicalRecord(id: string) {
+    return this.prisma.medicalRecord.findUnique({
+      where: { appointmentId: id },
+      include: {
+        patient: { select: { id: true, name: true } },
+        doctor: { select: { id: true, name: true } },
+        appointment: {
+          select: { id: true, scheduledDate: true, type: true, status: true, doctorId: true },
+        },
+        finalizedBy: { select: { id: true, name: true } },
+      },
     });
   }
 }

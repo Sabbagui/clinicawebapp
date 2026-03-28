@@ -13,12 +13,13 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
   const router = useRouter();
 
   const statusBorderColors: Record<string, string> = {
-    SCHEDULED: 'border-l-blue-500',
-    CONFIRMED: 'border-l-green-500',
-    IN_PROGRESS: 'border-l-yellow-500',
-    COMPLETED: 'border-l-gray-400',
-    CANCELLED: 'border-l-red-500',
-    NO_SHOW: 'border-l-orange-500',
+    SCHEDULED:   'border-l-blue-400',
+    CONFIRMED:   'border-l-emerald-600',
+    CHECKED_IN:  'border-l-amber-500',
+    IN_PROGRESS: 'border-l-orange-500',
+    COMPLETED:   'border-l-gray-400',
+    CANCELLED:   'border-l-red-400',
+    NO_SHOW:     'border-l-red-800',
   };
 
   const borderColor = statusBorderColors[appointment.status] || 'border-l-gray-300';

@@ -186,31 +186,31 @@ export default function ReceivablesPage() {
               label="Total pendente"
               value={formatBRLFromCents(data.kpis.pendingCents)}
               sub={`${data.kpis.pendingCount} cobranças`}
-              color="bg-amber-100 text-amber-700"
+              color="bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300"
             />
             <KpiCard
               label="0-7 dias"
               value={formatBRLFromCents(data.kpis.buckets.d0_7.cents)}
               sub={`${data.kpis.buckets.d0_7.count} itens`}
-              color="bg-emerald-100 text-emerald-700"
+              color="bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
             />
             <KpiCard
               label="8-15 dias"
               value={formatBRLFromCents(data.kpis.buckets.d8_15.cents)}
               sub={`${data.kpis.buckets.d8_15.count} itens`}
-              color="bg-yellow-100 text-yellow-700"
+              color="bg-yellow-100 dark:bg-yellow-950/40 text-yellow-700 dark:text-yellow-300"
             />
             <KpiCard
               label="16-30 dias"
               value={formatBRLFromCents(data.kpis.buckets.d16_30.cents)}
               sub={`${data.kpis.buckets.d16_30.count} itens`}
-              color="bg-orange-100 text-orange-700"
+              color="bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300"
             />
             <KpiCard
               label="31+ dias"
               value={formatBRLFromCents(data.kpis.buckets.d31p.cents)}
               sub={`${data.kpis.buckets.d31p.count} itens`}
-              color="bg-red-100 text-red-700"
+              color="bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300"
             />
           </div>
 

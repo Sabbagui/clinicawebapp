@@ -4,8 +4,9 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, Users, Calendar, CalendarCheck, UserCog, LogOut, BarChart3, ShieldCheck, Wallet } from 'lucide-react';
+import { LayoutDashboard, Users, Calendar, CalendarCheck, UserCog, LogOut, BarChart3, ShieldCheck, Wallet, UserCircle } from 'lucide-react';
 import { UserRole } from '@/types';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 interface NavItem {
   href: string;
@@ -24,6 +25,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard/finance', label: 'Financeiro', icon: BarChart3 },
   { href: '/dashboard/audit', label: 'Auditoria', icon: ShieldCheck, adminOnly: true },
   { href: '/dashboard/staff', label: 'Equipe', icon: UserCog, adminOnly: true },
+  { href: '/dashboard/profile', label: 'Meu Perfil', icon: UserCircle, roles: [UserRole.DOCTOR] },
 ];
 
 export function DashboardNav() {
@@ -80,6 +82,7 @@ export function DashboardNav() {
             <span className="text-sm text-muted-foreground hidden md:inline">
               {user?.name}
             </span>
+            <ThemeToggle />
             <Button onClick={logout} variant="ghost" size="sm" className="gap-2">
               <LogOut className="h-4 w-4" />
               <span className="hidden sm:inline">Sair</span>

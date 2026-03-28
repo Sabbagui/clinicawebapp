@@ -15,10 +15,23 @@ const apiClient: AxiosInstance = axios.create({
   timeout: 10000,
 });
 
-// Request interceptor - automatically inject auth token
+// Extend config type to carry the retry flag
+interface RetryableConfig extends InternalAxiosRequestConfig {
+  _retry?: boolean;
+}
+
+// Queue of requests waiting for token refresh to complete
+let isRefreshing = false;
+let failedQueue: Array<{ resolve: (token: string) => void; reject: (err: unknown) => void }> = [];
+
+function processQueue(error: unknown, token: string | null = null) {
+  failedQueue.forEach((p) => (error ? p.reject(error) : p.resolve(token!)));
+  failedQueue = [];
+}
+
+// Request interceptor — inject auth token
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // Only add token if we're in a browser environment
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('auth_token');
       if (token && config.headers) {
@@ -27,30 +40,97 @@ apiClient.interceptors.request.use(
     }
     return config;
   },
-  (error: AxiosError) => {
-    return Promise.reject(error);
-  }
+  (error: AxiosError) => Promise.reject(error)
 );
 
-// Response interceptor - handle common errors
+// Response interceptor — 401 → try refresh once, then logout
 apiClient.interceptors.response.use(
   (response) => response,
-  (error: AxiosError) => {
-    // Handle 401 Unauthorized - token expired or invalid
-    if (error.response?.status === 401) {
-      if (typeof window !== 'undefined') {
-        // Clear auth data
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('auth-storage');
+  async (error: AxiosError) => {
+    const originalRequest = error.config as RetryableConfig | undefined;
 
-        // Redirect to login only if not already there
+    if (error.response?.status === 401 && typeof window !== 'undefined') {
+      // If the failing request IS the refresh endpoint → session expired, logout
+      if (originalRequest?.url?.includes('/auth/refresh')) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('auth-storage');
         if (window.location.pathname !== '/login') {
           window.location.href = '/login';
         }
+        return Promise.reject(error);
       }
+
+      // Already retried once → give up
+      if (originalRequest?._retry) {
+        return Promise.reject(error);
+      }
+
+      // Enqueue if a refresh is already in progress
+      if (isRefreshing) {
+        return new Promise<string>((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((newToken) => {
+            if (originalRequest) {
+              originalRequest.headers.Authorization = `Bearer ${newToken}`;
+              return apiClient(originalRequest);
+            }
+          })
+          .catch((err) => Promise.reject(err));
+      }
+
+      const storedRefreshToken = localStorage.getItem('refresh_token');
+
+      if (!storedRefreshToken) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth-storage');
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+        return Promise.reject(error);
+      }
+
+      if (originalRequest) originalRequest._retry = true;
+      isRefreshing = true;
+
+      return new Promise((resolve, reject) => {
+        axios
+          .post('/api/auth/refresh', { refresh_token: storedRefreshToken })
+          .then(({ data }) => {
+            const { access_token, refresh_token } = data as {
+              access_token: string;
+              refresh_token: string;
+            };
+
+            localStorage.setItem('auth_token', access_token);
+            localStorage.setItem('refresh_token', refresh_token);
+            apiClient.defaults.headers.common.Authorization = `Bearer ${access_token}`;
+
+            if (originalRequest) {
+              originalRequest.headers.Authorization = `Bearer ${access_token}`;
+            }
+
+            processQueue(null, access_token);
+            resolve(originalRequest ? apiClient(originalRequest) : undefined);
+          })
+          .catch((refreshError) => {
+            processQueue(refreshError, null);
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('auth-storage');
+            if (window.location.pathname !== '/login') {
+              window.location.href = '/login';
+            }
+            reject(refreshError);
+          })
+          .finally(() => {
+            isRefreshing = false;
+          });
+      });
     }
 
-    // Handle 403 Forbidden - insufficient permissions
+    // Handle 403 Forbidden
     if (error.response?.status === 403) {
       console.error('Acesso negado: Você não tem permissão para esta ação');
     }

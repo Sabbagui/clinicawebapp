@@ -8,7 +8,7 @@ import {
 import { PrismaService } from '@/common/prisma/prisma.service';
 import { CreateMedicalRecordDto } from './dto/create-medical-record.dto';
 import { UpdateMedicalRecordDto } from './dto/update-medical-record.dto';
-import { MedicalRecordStatus } from '@prisma/client';
+import { MedicalRecordStatus, Prisma } from '@prisma/client';
 import {
   ACCESS_FORBIDDEN_MESSAGE,
   assertMedicalRecordAccess,
@@ -79,6 +79,8 @@ export class MedicalRecordsService {
         objective: dto.objective ?? '',
         assessment: dto.assessment ?? '',
         plan: dto.plan ?? '',
+        ...(dto.cid10 !== undefined && { cid10: dto.cid10 }),
+        ...(dto.prescriptions !== undefined && { prescriptions: dto.prescriptions as Prisma.InputJsonValue }),
         status: MedicalRecordStatus.DRAFT,
       },
       include: INCLUDE_RELATIONS,
@@ -133,6 +135,8 @@ export class MedicalRecordsService {
         ...(dto.objective !== undefined && { objective: dto.objective }),
         ...(dto.assessment !== undefined && { assessment: dto.assessment }),
         ...(dto.plan !== undefined && { plan: dto.plan }),
+        ...(dto.cid10 !== undefined && { cid10: dto.cid10 }),
+        ...(dto.prescriptions !== undefined && { prescriptions: dto.prescriptions as Prisma.InputJsonValue }),
       },
       include: INCLUDE_RELATIONS,
     });

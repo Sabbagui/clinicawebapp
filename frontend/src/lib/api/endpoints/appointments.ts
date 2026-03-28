@@ -43,30 +43,15 @@ function transformAPIToAppointment(api: AppointmentAPI): Appointment {
   };
 }
 
-// São Paulo is UTC-3 year-round (Brazil ended DST in 2019)
-const SAO_PAULO_OFFSET_HOURS = 3;
-
 function transformFormToAPI(form: AppointmentFormData) {
-  const scheduledDate = clinicLocalToUtcIso(form.date, form.time);
-
   return {
     patientId: form.patientId,
     doctorId: form.doctorId,
-    scheduledDate,
-    duration: form.duration,
+    date: form.date,
+    startTime: form.time,
     type: form.type,
     notes: form.notes || undefined,
   };
-}
-
-function clinicLocalToUtcIso(date: string, time: string): string {
-  const [year, month, day] = date.split('-').map(Number);
-  const [hour, minute] = time.split(':').map(Number);
-
-  // Add offset: local 14:00 BRT → 17:00 UTC (Date.UTC handles hour overflow)
-  return new Date(
-    Date.UTC(year, month - 1, day, hour + SAO_PAULO_OFFSET_HOURS, minute),
-  ).toISOString();
 }
 
 export const getAppointments = async (

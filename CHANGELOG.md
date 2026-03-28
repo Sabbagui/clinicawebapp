@@ -2,6 +2,129 @@
 
 ---
 
+## [2026-03-27] — Cache, testes, consolidação de stores e monitoramento (Fase 3)
+
+### Feito
+
+#### Frontend
+- **Store unificado** — `appointment-store.ts` (singular, `useAppointmentStore`) removido. Toda a lógica migrada para `appointments-store.ts` (`useAppointmentsStore`), que já continha as ações de calendário (novo) e as ações legadas (detalhe/edição). 5 componentes e páginas atualizados: `new/page.tsx`, `[id]/page.tsx`, `[id]/edit/page.tsx`, `appointment-status-actions.tsx`, `encounter-section.tsx`.
+- **Loading/Error pages** — `loading.tsx` com skeleton UI e `error.tsx` com error boundary (`'use client'`) adicionados às rotas: `/dashboard`, `/dashboard/patients`, `/dashboard/appointments`, `/dashboard/finance`.
+
+#### Backend — Cache
+- **`@nestjs/cache-manager` + `cache-manager`** instalados no backend.
+- **`CacheModule`** registrado globalmente no `AppModule` (store em memória, TTL padrão 120s).
+- **`getAvailableSlots`** em `AppointmentsService` agora verifica o cache antes de consultar o banco (`slots:<doctorId>:<date>`). Resultado é salvo com TTL de 120s.
+- **Invalidação automática** em `DoctorScheduleService`: ao salvar agenda semanal (`upsertWeeklySchedule`) ou criar bloqueio de horário (`createBlockedSlot`), o cache do médico é limpo via iteração dos stores Keyv (fallback: `clear()` geral).
+
+#### Backend — Testes
+- **`appointments.service.spec.ts`** reescrito — 8 testes passando: mock de `CACHE_MANAGER` adicionado; cenários: overlap de horário, bloqueio de slot, fora da jornada, criação bem-sucedida, transição inválida (COMPLETED → SCHEDULED), ForbiddenException (médico de outro), `completeEncounter` sem prontuário FINAL, sem prontuário nenhum.
+- **`medical-records.service.spec.ts`** reescrito — 9 testes passando: corrigido arquivo malformado e imports ausentes; cenários: ForbiddenException para RECEPTIONIST em `create`/`finalize`/`findOne`, ConflictException em prontuário duplicado, BadRequestException ao editar/finalizar prontuário FINAL, update bem-sucedido, ADMIN pode acessar.
+- **`finance.service.spec.ts`** corrigido — mock `expense.findMany` ausente adicionado (causava crash silencioso em `getSummary`); asserção do filtro `pendingWhere` atualizada para refletir cláusula `OR` atual do serviço. 4 testes passando.
+- **Total: 21 testes passando** nos 3 módulos.
+
+#### Infraestrutura
+- **Uptime Kuma** adicionado ao `docker-compose.prod.yml` — imagem `louislam/uptime-kuma:1`, rede `edge`, porta `100.74.93.53:3002`, volume `uptime_kuma_data`. Deployado no servidor via SSH + `docker compose up -d uptime-kuma`. Atualizado para a última versão via `pull` + `up --no-deps`.
+
+### Decisões tomadas
+- Store único (`useAppointmentsStore`) une API de calendário (AppointmentListItem) e API legada (Appointment com scheduledDate: Date) para evitar conflito de tipos entre páginas de listagem e detalhe.
+- Cache em memória (sem Redis): simples, sem dependência externa, adequado para o volume atual. TTL de 120s equilibra frescor dos dados com ganho de performance.
+- Invalidação de cache usa iteração dos stores Keyv internos do `cache-manager` (sem wildcard nativo); fallback para `clear()` total garante segurança.
+- Uptime Kuma acessa containers pelos nomes de serviço Docker (`frontend`, `backend`) — funciona por estar na rede `edge`.
+
+### Pendências desta sessão
+- Build do backend (worktree `wizardly-lumiere`) ainda com erro de TypeScript no `DoctorScheduleService` (worktree separado do main — não afeta produção)
+- Nenhuma pendência no branch `main`
+
+### Próximos passos
+1. Configurar monitores no Uptime Kuma via `http://100.74.93.53:3002`
+2. Configurar alertas de downtime (e-mail / Telegram) no Uptime Kuma
+3. Validar se `reminderSent` cron está funcionando em produção
+
+---
+
+## [2026-03-26] — Segurança, LGPD e estabilização (Fases 1 e 2)
+
+### Feito
+
+#### Segurança e LGPD (Fase 1)
+- **Rate limiting** implementado com `@nestjs/throttler` — 5 tentativas por minuto no endpoint de login, proteção contra força bruta
+- **Swagger desabilitado em produção** — `SwaggerModule.setup` agora condicional a `NODE_ENV !== 'production'`
+- **Uploads protegidos por autenticação** — removido `useStaticAssets` público; criado endpoint `GET /uploads/:path` autenticado por JWT; frontend atualizado para enviar Bearer token nos requests de arquivos
+- **Volume Docker para uploads** — `uploads_data` mapeado no `docker-compose.prod.yml`, comprovantes de pacientes não são mais perdidos em rebuild
+- **Consentimento LGPD** — campo `lgpdConsentGiven` + `lgpdConsentDate` + `lgpdConsentText` adicionados ao model `Patient` com migration; checkbox obrigatório no formulário de cadastro de paciente
+- **Anonimização LGPD** — endpoint `PATCH /patients/:id/anonymize` criado (apenas ADMIN); substitui dados pessoais por valores anônimos mantendo histórico médico; registrado no AuditLog
+
+#### Banco de dados e performance (Fase 2)
+- **Índice `reminderSent`** — `@@index([reminderSent, scheduledDate])` adicionado ao model `Appointment` com migration; melhora performance do cron de lembretes
+- **Bug DRAFT → FINAL corrigido** — botão "Finalizar Prontuário" ajustado no `encounter-section.tsx`; fluxo completo testado
+
+#### Autenticação (Fase 2)
+- **Refresh token** implementado — access token com 8h, refresh token com 7d usando `JWT_REFRESH_SECRET`; novo endpoint `POST /auth/refresh`; frontend com interceptor automático de 401 que renova o token sem re-login
+
+#### Infraestrutura (Fase 2)
+- **Script de backup automático** criado em `scripts/backup-db.sh` — pg_dump via docker exec, comprimido, 30 dias de retenção; `scripts/restore-db.sh` para restore manual; `BACKUP-SETUP.md` com instruções de cron
+- **Merge conflict em `staff/page.tsx`** — resolvido; branch `claude/elastic-franklin` mergeada em `main`
+- **KPI cards dark mode** — classes `dark:` aplicadas nos cards "Despesas" e "Resultado" da página Financeiro
+
+### Decisões tomadas
+- Anonimização mantém registros médicos intactos (obrigação legal de 20 anos) — apenas dados pessoais são apagados
+- Refresh token usa secret separado (`JWT_REFRESH_SECRET`) para permitir revogação independente
+- Uploads servidos via endpoint NestJS autenticado (não static assets) — solução adequada para dados de saúde sensíveis
+- Arquivos de prompts e análises do Cowork (`PROMPTS-*.md`) adicionados ao `.gitignore`
+
+### Pendências desta sessão
+- Nenhuma — todas as tarefas das Fases 1 e 2 concluídas
+
+### Próximos passos (Fase 3)
+1. `error.tsx` e `loading.tsx` nas rotas do dashboard (UX imediato)
+2. Consolidar `appointment-store.ts` e `appointments-store.ts` em um único store
+3. Cache em `getAvailableSlots()` com `@nestjs/cache-manager`
+4. Expandir cobertura de testes nos módulos críticos (appointments, medical-records, finance)
+5. Configurar UptimeRobot para monitoramento de uptime (tarefa manual, sem código)
+
+---
+
+## [2026-03-26] — Módulo de despesas, dark mode e ajustes de paleta
+
+### Feito
+- **Módulo de despesas** implementado do zero (backend + frontend):
+  - Modelo `Expense` + `ExpenseCategory` adicionados ao schema Prisma
+  - Migration criada para as novas tabelas
+  - Backend: módulo NestJS `expenses` com CRUD completo de despesas e categorias
+  - Categorias padrão populadas no seed
+  - Frontend: aba "Despesas" na página `/dashboard/finance`
+  - Upload de comprovante PDF com extração de dados via `pdf-parse` (sem LLM)
+  - Gerenciamento de categorias disponível para `ADMIN` e `RECEPTIONIST`
+- **Dark mode** implementado:
+  - Dependência `next-themes` adicionada
+  - Toggle no header do dashboard
+  - CSS variables atualizadas em `globals.css` com paleta terracota + verde sage
+  - Overrides do FullCalendar para dark mode (`.dark .fc-*` no globals.css)
+- **Paleta de marca** atualizada para terracota (`hsl(14 47% 52%)`) + verde sage
+- **Status de agendamentos** no calendário com cores ajustadas para a nova paleta
+- **KPI cards** da página Financeiro: classes `dark:` adicionadas para `bg-green-50`, `bg-yellow-50`, `bg-pink-50`, `bg-blue-50` (parcial — ver pendências)
+- **package-lock.json** atualizado para incluir `next-themes` (evitava falha no `npm ci` do servidor)
+- **Bug prontuário (500)**: colunas `cid10` e `prescriptions` estavam ausentes na tabela `medical_records` apesar da migration marcada como aplicada — corrigidas com `ALTER TABLE` manual no servidor
+- **Servidor travando**: investigado; provável causa foi conexão de SSD solta — reencaixado
+
+### Decisões tomadas
+- Despesas sempre registradas após pagamento → sem campo de status (pago/pendente)
+- Extração de PDF via `pdf-parse` puro, sem LLM (funciona para PDFs gerados digitalmente)
+- Dark mode: `darkMode: ["class"]` no Tailwind; `next-themes` aplica classe `.dark` no `<html>`
+- FullCalendar requer overrides CSS manuais — não responde à classe `.dark` automaticamente
+
+### Pendências desta sessão
+- Cards KPI "Despesas" e "Resultado" ainda com pastel claro no dark mode (classes `dark:` não aplicadas)
+- Merge conflict em `frontend/src/app/(dashboard)/dashboard/staff/page.tsx` — precisa resolver para completar o merge `claude/elastic-franklin → main`
+
+### Próximos passos
+1. Resolver merge conflict em `staff/page.tsx`
+2. Aplicar `dark:` nos cards "Despesas" e "Resultado" da página Financeiro
+3. Verificar mesmos cards na página Cobranças (`/dashboard/receivables`)
+4. Fazer `git pull` no servidor para aplicar todas as mudanças
+
+---
+
 ## [2026-03-24] — Inicialização dos arquivos de contexto de sessão
 
 ### Feito

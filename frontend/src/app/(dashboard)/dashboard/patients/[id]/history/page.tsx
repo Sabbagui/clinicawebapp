@@ -127,27 +127,27 @@ export default function PatientHistoryPage({ params }: { params: { id: string } 
         <StatChip
           label="Consultas"
           value={stats.completedCount}
-          color="bg-green-100 text-green-700"
+          color="bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300"
         />
         <StatChip
           label="Faltas"
           value={stats.noShowCount}
-          color="bg-orange-100 text-orange-700"
+          color="bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300"
         />
         <StatChip
           label="Cancelamentos"
           value={stats.cancelledCount}
-          color="bg-red-100 text-red-700"
+          color="bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300"
         />
         <StatChip
           label="Última consulta"
           value={stats.lastVisitAt ? formatDate(stats.lastVisitAt) : '—'}
-          color="bg-blue-100 text-blue-700"
+          color="bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300"
         />
         <StatChip
           label="Próxima consulta"
           value={stats.nextAppointmentAt ? formatDate(stats.nextAppointmentAt) : '—'}
-          color="bg-purple-100 text-purple-700"
+          color="bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300"
         />
       </div>
 
@@ -258,8 +258,8 @@ function TimelineCard({
             <span
               className={`ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                 entry.medicalRecord.status === 'FINAL'
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-yellow-100 text-yellow-700'
+                  ? 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300'
+                  : 'bg-yellow-100 dark:bg-yellow-950/40 text-yellow-700 dark:text-yellow-300'
               }`}
             >
               {entry.medicalRecord.status === 'FINAL' ? 'Finalizado' : 'Rascunho'}
@@ -299,10 +299,10 @@ function TimelineCard({
             <span
               className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                 entry.payment.status === 'PAID'
-                  ? 'bg-green-100 text-green-700'
+                  ? 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300'
                   : entry.payment.status === 'PENDING'
-                    ? 'bg-yellow-100 text-yellow-700'
-                    : 'bg-red-100 text-red-700'
+                    ? 'bg-yellow-100 dark:bg-yellow-950/40 text-yellow-700 dark:text-yellow-300'
+                    : 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300'
               }`}
             >
               {PAYMENT_STATUS_LABELS[entry.payment.status] || entry.payment.status}

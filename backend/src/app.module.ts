@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
+import { CacheModule } from '@nestjs/cache-manager';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './common/prisma/prisma.module';
@@ -14,12 +16,26 @@ import { FinanceModule } from './modules/finance/finance.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { DoctorScheduleModule } from './modules/doctor-schedule/doctor-schedule.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { ExpensesModule } from './modules/expenses/expenses.module';
+import { ExpenseCategoriesModule } from './modules/expense-categories/expense-categories.module';
+import { UploadsModule } from './modules/uploads/uploads.module';
+import { PrescriptionsModule } from './modules/prescriptions/prescriptions.module';
 
 @Module({
   imports: [
+    CacheModule.register({
+      isGlobal: true,
+      ttl: 120_000, // 120 segundos em ms (cache-manager v5 usa milissegundos)
+    }),
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 5,
+      },
+    ]),
     ScheduleModule.forRoot(),
     PrismaModule,
     AuthModule,
@@ -32,6 +48,10 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     AuditModule,
     DoctorScheduleModule,
     NotificationsModule,
+    ExpensesModule,
+    ExpenseCategoriesModule,
+    UploadsModule,
+    PrescriptionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -6,11 +6,13 @@ import type { User } from '@/types';
 interface AuthState {
   user: User | null;
   token: string | null;
+  refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   setUser: (user: User | null) => void;
+  setTokens: (accessToken: string, refreshToken: string) => void;
   checkAuth: () => void;
 }
 
@@ -19,23 +21,24 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       user: null,
       token: null,
+      refreshToken: null,
       isAuthenticated: false,
       isLoading: false,
 
       login: async (email: string, password: string) => {
         set({ isLoading: true });
         try {
-          const { access_token, user } = await loginAPI(email, password);
+          const { access_token, refresh_token, user } = await loginAPI(email, password);
 
-          // Store token in localStorage
           if (typeof window !== 'undefined') {
             localStorage.setItem('auth_token', access_token);
+            localStorage.setItem('refresh_token', refresh_token);
           }
 
-          // Update store state
           set({
             user,
             token: access_token,
+            refreshToken: refresh_token,
             isAuthenticated: true,
             isLoading: false,
           });
@@ -46,21 +49,20 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
-        // Clear all auth data
         if (typeof window !== 'undefined') {
           localStorage.removeItem('auth_token');
+          localStorage.removeItem('refresh_token');
           localStorage.removeItem('auth-storage');
         }
 
-        // Reset state
         set({
           user: null,
           token: null,
+          refreshToken: null,
           isAuthenticated: false,
           isLoading: false,
         });
 
-        // Redirect to login
         if (typeof window !== 'undefined') {
           window.location.href = '/login';
         }
@@ -70,22 +72,33 @@ export const useAuthStore = create<AuthState>()(
         set({ user });
       },
 
+      setTokens: (accessToken: string, refreshToken: string) => {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('auth_token', accessToken);
+          localStorage.setItem('refresh_token', refreshToken);
+        }
+        set({ token: accessToken, refreshToken });
+      },
+
       checkAuth: () => {
         if (typeof window === 'undefined') return;
 
         const token = localStorage.getItem('auth_token');
+        const refreshToken = localStorage.getItem('refresh_token');
         const storedUser = get().user;
 
         if (token && storedUser) {
           set({
             isAuthenticated: true,
             token,
+            refreshToken: refreshToken ?? get().refreshToken,
             user: storedUser,
           });
         } else {
           set({
             isAuthenticated: false,
             token: null,
+            refreshToken: null,
             user: null,
           });
         }
@@ -94,11 +107,9 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'auth-storage',
       storage: createJSONStorage(() => {
-        // Only use localStorage in browser environment
         if (typeof window !== 'undefined') {
           return localStorage;
         }
-        // Return a no-op storage for SSR
         return {
           getItem: () => null,
           setItem: () => {},
@@ -108,6 +119,7 @@ export const useAuthStore = create<AuthState>()(
       partialize: (state) => ({
         user: state.user,
         token: state.token,
+        refreshToken: state.refreshToken,
       }),
     }
   )
