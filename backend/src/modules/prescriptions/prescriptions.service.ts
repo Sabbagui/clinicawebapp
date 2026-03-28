@@ -8,7 +8,7 @@ import { PrescriptionType, UserRole } from '@prisma/client';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
-import { signpdf } from '@signpdf/signpdf';
+import { SignPdf } from '@signpdf/signpdf';
 import { P12Signer } from '@signpdf/signer-p12';
 import { PrismaService } from '@/common/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -123,7 +123,7 @@ export class PrescriptionsService {
     try {
       const { p12Buffer, password } = await this.certificateService.loadDecryptedP12(doctorId);
       const signer = new P12Signer(p12Buffer, { passphrase: password });
-      pdfBuffer = await signpdf.sign(pdfBuffer, signer);
+      pdfBuffer = await new SignPdf().sign(pdfBuffer, signer);
       isSigned = true;
     } catch (err: any) {
       // Se o médico não tem certificado configurado, emite sem assinatura (aviso)

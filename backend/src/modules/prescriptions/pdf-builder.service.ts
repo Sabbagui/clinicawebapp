@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrescriptionType } from '@prisma/client';
 import * as PDFDocument from 'pdfkit';
-import { plainAddPlaceholder } from '@signpdf/placeholder-pdfkit';
+import { pdfkitAddPlaceholder } from '@signpdf/placeholder-pdfkit';
 import * as qrcode from 'qrcode';
 import { numberToWords } from '../../common/utils/number-to-words';
 
@@ -56,7 +56,7 @@ function formatDate(d: Date): string {
   return d.toLocaleDateString('pt-BR');
 }
 
-async function streamToBuffer(doc: PDFKit.PDFDocument): Promise<Buffer> {
+async function streamToBuffer(doc: InstanceType<typeof PDFDocument>): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     doc.on('data', (chunk: Buffer) => chunks.push(chunk));
@@ -90,12 +90,12 @@ export class PdfBuilderService {
 
     this.drawReceitaSimplesPage(doc, data, qrBuffer);
 
-    plainAddPlaceholder({ pdfDoc: doc as any, reason: 'Assinatura digital ICP-Brasil' });
+    pdfkitAddPlaceholder({ pdf: doc as any, reason: 'Assinatura digital ICP-Brasil' });
     return streamToBuffer(doc);
   }
 
   private drawReceitaSimplesPage(
-    doc: PDFKit.PDFDocument,
+    doc: InstanceType<typeof PDFDocument>,
     data: PrescriptionPdfData,
     qrBuffer: Buffer,
   ): void {
@@ -193,12 +193,12 @@ export class PdfBuilderService {
     doc.addPage();
     this.drawReceitaC1Page(doc, data, qrBuffer, '2ª VIA — PACIENTE');
 
-    plainAddPlaceholder({ pdfDoc: doc as any, reason: 'Assinatura digital ICP-Brasil' });
+    pdfkitAddPlaceholder({ pdf: doc as any, reason: 'Assinatura digital ICP-Brasil' });
     return streamToBuffer(doc);
   }
 
   private drawReceitaC1Page(
-    doc: PDFKit.PDFDocument,
+    doc: InstanceType<typeof PDFDocument>,
     data: PrescriptionPdfData,
     qrBuffer: Buffer,
     viaLabel: string,
