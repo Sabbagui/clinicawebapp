@@ -53,6 +53,11 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum PrescriptionType {
+  SIMPLES
+  CONTROLE_ESPECIAL_C1
+}
+
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
@@ -64,13 +69,22 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  doctorAppointments  Appointment[]       @relation("DoctorAppointments")
-  createdAppointments Appointment[]       @relation("CreatedAppointments")
-  doctorSchedule      DoctorSchedule[]    @relation("DoctorSchedule")
-  doctorBlocked       DoctorBlockedSlot[] @relation("DoctorBlocked")
-  medicalRecords     MedicalRecord[]
-  finalizedRecords   MedicalRecord[] @relation("FinalizedRecords")
-  createdExpenses    Expense[]       @relation("CreatedExpenses")
+  // Doctor profile
+  crm           String?
+  crmUf         String?
+  clinicName    String?
+  clinicAddress String?
+  clinicPhone   String?
+
+  doctorAppointments   Appointment[]        @relation("DoctorAppointments")
+  createdAppointments  Appointment[]        @relation("CreatedAppointments")
+  doctorSchedule       DoctorSchedule[]     @relation("DoctorSchedule")
+  doctorBlocked        DoctorBlockedSlot[]  @relation("DoctorBlocked")
+  medicalRecords       MedicalRecord[]
+  finalizedRecords     MedicalRecord[]      @relation("FinalizedRecords")
+  createdExpenses      Expense[]            @relation("CreatedExpenses")
+  certificate          DoctorCertificate?
+  issuedPrescriptions  IssuedPrescription[] @relation("DoctorPrescriptions")
 
   @@map("users")
 }
@@ -110,8 +124,9 @@ model Patient {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  appointments    Appointment[]
-  medicalRecords  MedicalRecord[]
+  appointments         Appointment[]
+  medicalRecords       MedicalRecord[]
+  issuedPrescriptions  IssuedPrescription[]
 
   @@map("patients")
 }
@@ -208,6 +223,8 @@ model MedicalRecord {
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
 
+  issuedPrescriptions IssuedPrescription[]
+
   @@map("medical_records")
 }
 
@@ -259,6 +276,44 @@ model Expense {
   @@index([date])
   @@index([categoryId, date])
   @@map("expenses")
+}
+
+model DoctorCertificate {
+  id          String    @id @default(uuid())
+  doctorId    String    @unique
+  doctor      User      @relation(fields: [doctorId], references: [id])
+  storedPath  String
+  iv          String
+  authTag     String
+  encPassword String
+  subjectCN   String?
+  issuerCN    String?
+  notBefore   DateTime?
+  notAfter    DateTime?
+  uploadedAt  DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("doctor_certificates")
+}
+
+model IssuedPrescription {
+  id              String           @id @default(uuid())
+  medicalRecordId String
+  medicalRecord   MedicalRecord    @relation(fields: [medicalRecordId], references: [id])
+  doctorId        String
+  doctor          User             @relation("DoctorPrescriptions", fields: [doctorId], references: [id])
+  patientId       String
+  patient         Patient          @relation(fields: [patientId], references: [id])
+  type            PrescriptionType
+  pdfPath         String
+  authHash        String
+  isSigned        Boolean          @default(false)
+  issuedAt        DateTime         @default(now())
+  expiresAt       DateTime?
+
+  @@index([medicalRecordId])
+  @@index([doctorId, issuedAt])
+  @@map("issued_prescriptions")
 }
 
 model AuditLog {

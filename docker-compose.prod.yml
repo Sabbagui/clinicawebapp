@@ -49,6 +49,7 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       JWT_SECRET: ${JWT_SECRET}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000,http://100.74.93.53:3000}
+      CERT_ENCRYPTION_KEY: ${CERT_ENCRYPTION_KEY}
     expose:
       - '3001'
     healthcheck:

@@ -4,7 +4,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, Users, Calendar, CalendarCheck, UserCog, LogOut, BarChart3, ShieldCheck, Wallet } from 'lucide-react';
+import { LayoutDashboard, Users, Calendar, CalendarCheck, UserCog, LogOut, BarChart3, ShieldCheck, Wallet, UserCircle } from 'lucide-react';
 import { UserRole } from '@/types';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 
@@ -25,6 +25,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard/finance', label: 'Financeiro', icon: BarChart3 },
   { href: '/dashboard/audit', label: 'Auditoria', icon: ShieldCheck, adminOnly: true },
   { href: '/dashboard/staff', label: 'Equipe', icon: UserCog, adminOnly: true },
+  { href: '/dashboard/profile', label: 'Meu Perfil', icon: UserCircle, roles: [UserRole.DOCTOR] },
 ];
 
 export function DashboardNav() {

@@ -11,6 +11,11 @@ export interface User {
   email: string;
   name: string;
   role: UserRole;
+  crm?: string | null;
+  crmUf?: string | null;
+  clinicName?: string | null;
+  clinicAddress?: string | null;
+  clinicPhone?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -168,4 +173,33 @@ export interface Payment {
   receiptPath?: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+// Prescriptions
+export enum PrescriptionType {
+  SIMPLES = 'SIMPLES',
+  CONTROLE_ESPECIAL_C1 = 'CONTROLE_ESPECIAL_C1',
+}
+
+export interface IssuedPrescription {
+  id: string;
+  medicalRecordId: string;
+  doctorId: string;
+  patientId: string;
+  type: PrescriptionType;
+  pdfPath: string;
+  pdfUrl: string;
+  authHash: string;
+  isSigned: boolean;
+  issuedAt: string;
+  expiresAt?: string | null;
+}
+
+export interface DoctorCertificateMeta {
+  id: string;
+  subjectCN: string | null;
+  issuerCN: string | null;
+  notBefore: string | null;
+  notAfter: string | null;
+  uploadedAt: string;
 }

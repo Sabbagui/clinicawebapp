@@ -19,6 +19,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { ExpensesModule } from './modules/expenses/expenses.module';
 import { ExpenseCategoriesModule } from './modules/expense-categories/expense-categories.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
+import { PrescriptionsModule } from './modules/prescriptions/prescriptions.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { UploadsModule } from './modules/uploads/uploads.module';
     ExpensesModule,
     ExpenseCategoriesModule,
     UploadsModule,
+    PrescriptionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
