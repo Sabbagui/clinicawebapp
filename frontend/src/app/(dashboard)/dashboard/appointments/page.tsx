@@ -212,7 +212,10 @@ export default function AppointmentsPage() {
             <Input
               type="date"
               value={selectedDate}
-              onChange={(event) => setSelectedDate(event.target.value)}
+              onChange={(event) => {
+                setSelectedDate(event.target.value);
+                calendarRef.current?.getApi().gotoDate(event.target.value);
+              }}
             />
           </div>
 
@@ -255,6 +258,11 @@ export default function AppointmentsPage() {
           ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
           initialView={calendarView}
+          initialDate={selectedDate}
+          datesSet={(dateInfo) => {
+            const dateStr = `${dateInfo.start.getFullYear()}-${String(dateInfo.start.getMonth() + 1).padStart(2, '0')}-${String(dateInfo.start.getDate()).padStart(2, '0')}`;
+            setSelectedDate(dateStr);
+          }}
           viewDidMount={(viewInfo: ViewMountArg) => {
             const currentView = viewInfo.view.type;
             if (currentView === 'timeGridDay' || currentView === 'timeGridWeek') {
