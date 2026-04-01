@@ -18,6 +18,8 @@ import { DoctorScheduleModule } from './modules/doctor-schedule/doctor-schedule.
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ExpensesModule } from './modules/expenses/expenses.module';
 import { ExpenseCategoriesModule } from './modules/expense-categories/expense-categories.module';
+import { IncomesModule } from './modules/incomes/incomes.module';
+import { IncomeCategoriesModule } from './modules/income-categories/income-categories.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 import { PrescriptionsModule } from './modules/prescriptions/prescriptions.module';
 
@@ -50,6 +52,8 @@ import { PrescriptionsModule } from './modules/prescriptions/prescriptions.modul
     NotificationsModule,
     ExpensesModule,
     ExpenseCategoriesModule,
+    IncomesModule,
+    IncomeCategoriesModule,
     UploadsModule,
     PrescriptionsModule,
   ],

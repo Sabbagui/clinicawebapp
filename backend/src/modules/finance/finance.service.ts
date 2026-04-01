@@ -58,7 +58,7 @@ export class FinanceService {
       ...paymentInRangeByAppointmentOrCreatedAtWhere,
     };
 
-    const [paidPayments, pendingPayments, refundedPayments, cancelledPayments, noShowCount, cancelledApptCount, topPending, expenses] =
+    const [paidPayments, pendingPayments, refundedPayments, cancelledPayments, noShowCount, cancelledApptCount, topPending, expenses, incomes] =
       await Promise.all([
         this.prisma.payment.findMany({
           where: {
@@ -135,6 +135,16 @@ export class FinanceService {
           take: 10,
         }),
         this.prisma.expense.findMany({
+          where: {
+            date: { gte: startUtc, lt: endUtc },
+          },
+          select: {
+            amount: true,
+            categoryId: true,
+            category: { select: { id: true, name: true, label: true } },
+          },
+        }),
+        this.prisma.income.findMany({
           where: {
             date: { gte: startUtc, lt: endUtc },
           },
@@ -259,6 +269,22 @@ export class FinanceService {
     }
     const byExpenseCategory = Array.from(byCategoryMap.values()).sort((a, b) => b.totalCents - a.totalCents);
 
+    const incomesTotalCents = incomes.reduce((sum, i) => sum + i.amount, 0);
+    const incomesCount = incomes.length;
+    const netResultCents = receivedCents + incomesTotalCents - expensesTotalCents;
+
+    const byIncomeCategoryMap = new Map<string, { categoryId: string; category: string; totalCents: number; count: number }>();
+    for (const income of incomes) {
+      let row = byIncomeCategoryMap.get(income.categoryId);
+      if (!row) {
+        row = { categoryId: income.categoryId, category: income.category.label, totalCents: 0, count: 0 };
+        byIncomeCategoryMap.set(income.categoryId, row);
+      }
+      row.totalCents += income.amount;
+      row.count += 1;
+    }
+    const byIncomeCategory = Array.from(byIncomeCategoryMap.values()).sort((a, b) => b.totalCents - a.totalCents);
+
     return {
       meta: {
         start,
@@ -280,6 +306,9 @@ export class FinanceService {
         expensesTotalCents,
         expensesCount,
         profitCents,
+        incomesTotalCents,
+        incomesCount,
+        netResultCents,
       },
       series: {
         dailyReceived,
@@ -289,6 +318,7 @@ export class FinanceService {
         byMethod: Array.from(byMethodMap.values()),
         byDoctor: Array.from(byDoctorMap.values()),
         byExpenseCategory,
+        byIncomeCategory,
       },
       topPending: topPending.map((payment) => ({
         appointmentId: payment.appointment.id,

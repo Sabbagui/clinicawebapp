@@ -23,7 +23,20 @@ import {
   updateExpenseCategory,
   deleteExpenseCategory,
 } from '@/lib/api/endpoints/expense-categories';
-import { UserRole, type Expense, type ExpenseCategory } from '@/types';
+import {
+  listIncomes,
+  createIncome,
+  updateIncome,
+  deleteIncome,
+  uploadIncomeReceipt,
+} from '@/lib/api/endpoints/incomes';
+import {
+  listIncomeCategories,
+  createIncomeCategory,
+  updateIncomeCategory,
+  deleteIncomeCategory,
+} from '@/lib/api/endpoints/income-categories';
+import { UserRole, type Expense, type ExpenseCategory, type Income, type IncomeCategory } from '@/types';
 import { formatBRLFromCents, formatDateTime } from '@/lib/utils';
 import { Select } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
@@ -122,6 +135,33 @@ export default function FinancePage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Income list state
+  const [incomes, setIncomes] = useState<Income[]>([]);
+  const [incomesTotal, setIncomesTotal] = useState(0);
+  const [incomesLoading, setIncomesLoading] = useState(false);
+  const [incomePage, setIncomePage] = useState(0);
+  const INCOMES_PER_PAGE = 20;
+
+  // Income categories state
+  const [incomeCategories, setIncomeCategories] = useState<IncomeCategory[]>([]);
+  const [showIncomeCategoryManager, setShowIncomeCategoryManager] = useState(false);
+
+  // Income form state
+  const [showIncomeForm, setShowIncomeForm] = useState(false);
+  const [editingIncome, setEditingIncome] = useState<Income | null>(null);
+  const [incomeForm, setIncomeForm] = useState({
+    description: '',
+    amountBRL: '',
+    categoryId: '',
+    date: new Date().toISOString().split('T')[0],
+    notes: '',
+  });
+  const [incomeFile, setIncomeFile] = useState<File | null>(null);
+  const [savingIncome, setSavingIncome] = useState(false);
+  const [incomeFormError, setIncomeFormError] = useState<string | null>(null);
+
+  const incomeFileInputRef = useRef<HTMLInputElement>(null);
+
   const maxSeriesValue = useMemo(() => {
     if (!data) return 0;
     return Math.max(
@@ -144,6 +184,12 @@ export default function FinancePage() {
   const maxExpenseCategoryValue = useMemo(() => {
     if (!data) return 0;
     const cats = data.breakdowns.byExpenseCategory ?? [];
+    return Math.max(0, ...cats.map((c) => c.totalCents));
+  }, [data]);
+
+  const maxIncomeCategoryValue = useMemo(() => {
+    if (!data) return 0;
+    const cats = data.breakdowns.byIncomeCategory ?? [];
     return Math.max(0, ...cats.map((c) => c.totalCents));
   }, [data]);
 
@@ -188,6 +234,29 @@ export default function FinancePage() {
     }
   }, [startDate, endDate, expensePage, canManageExpenses]);
 
+  const fetchIncomeCategories = useCallback(() => {
+    listIncomeCategories(true).then(setIncomeCategories).catch(() => {});
+  }, []);
+
+  const fetchIncomes = useCallback(async () => {
+    if (!canManageExpenses) return;
+    setIncomesLoading(true);
+    try {
+      const result = await listIncomes({
+        start: startDate,
+        end: endDate,
+        limit: INCOMES_PER_PAGE,
+        offset: incomePage * INCOMES_PER_PAGE,
+      });
+      setIncomes(result.data);
+      setIncomesTotal(result.total);
+    } catch {
+      // silent
+    } finally {
+      setIncomesLoading(false);
+    }
+  }, [startDate, endDate, incomePage, canManageExpenses]);
+
   useEffect(() => {
     fetchSummary();
   }, [fetchSummary]);
@@ -206,6 +275,16 @@ export default function FinancePage() {
   useEffect(() => {
     fetchCategories();
   }, [fetchCategories]);
+
+  useEffect(() => {
+    fetchIncomeCategories();
+  }, [fetchIncomeCategories]);
+
+  useEffect(() => {
+    if (activeTab === 'receitas') {
+      fetchIncomes();
+    }
+  }, [activeTab, fetchIncomes]);
 
   const handleReceiptFileChange = async (file: File) => {
     setExpenseFile(file);
@@ -315,6 +394,89 @@ export default function FinancePage() {
     setShowExpenseForm(true);
   };
 
+  const resetIncomeForm = () => {
+    setIncomeForm({
+      description: '',
+      amountBRL: '',
+      categoryId: incomeCategories.length > 0 ? incomeCategories[0].id : '',
+      date: new Date().toISOString().split('T')[0],
+      notes: '',
+    });
+  };
+
+  const handleSaveIncome = async () => {
+    setIncomeFormError(null);
+    setSavingIncome(true);
+    try {
+      const amountCents = Math.round(parseFloat(incomeForm.amountBRL.replace(',', '.')) * 100);
+      const payload = {
+        description: incomeForm.description,
+        amount: amountCents,
+        categoryId: incomeForm.categoryId,
+        date: incomeForm.date,
+        notes: incomeForm.notes || undefined,
+      };
+      let saved: Income;
+      if (editingIncome) {
+        saved = await updateIncome(editingIncome.id, payload);
+      } else {
+        saved = await createIncome(payload);
+      }
+      if (incomeFile) {
+        await uploadIncomeReceipt(saved.id, incomeFile);
+      }
+      setShowIncomeForm(false);
+      setEditingIncome(null);
+      setIncomeFile(null);
+      resetIncomeForm();
+      await fetchIncomes();
+      await fetchSummary();
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === 'object' && 'response' in err
+          ? ((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao salvar receita')
+          : 'Erro ao salvar receita';
+      setIncomeFormError(msg);
+    } finally {
+      setSavingIncome(false);
+    }
+  };
+
+  const handleDeleteIncome = async (id: string) => {
+    if (!confirm('Confirmar exclusão da receita?')) return;
+    try {
+      await deleteIncome(id);
+      await fetchIncomes();
+      await fetchSummary();
+    } catch {
+      // silent
+    }
+  };
+
+  const handleEditIncome = (income: Income) => {
+    setEditingIncome(income);
+    setIncomeForm({
+      description: income.description,
+      amountBRL: (income.amount / 100).toFixed(2),
+      categoryId: income.categoryId,
+      date: income.date.split('T')[0],
+      notes: income.notes || '',
+    });
+    setIncomeFile(null);
+    setIncomeFormError(null);
+    setShowIncomeForm(true);
+  };
+
+  const handleOpenNewIncomeForm = () => {
+    setEditingIncome(null);
+    resetIncomeForm();
+    setIncomeFile(null);
+    setIncomeFormError(null);
+    setShowIncomeForm(true);
+  };
+
+  const totalIncomePages = Math.ceil(incomesTotal / INCOMES_PER_PAGE);
+
   const totalPages = Math.ceil(expensesTotal / EXPENSES_PER_PAGE);
 
   return (
@@ -381,7 +543,7 @@ export default function FinancePage() {
       {!isLoading && data && (
         <>
           {/* KPI row — always visible regardless of tab */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
             <KpiCard
               label="Recebido"
               value={formatBRLFromCents(data.kpis.receivedCents)}
@@ -411,17 +573,23 @@ export default function FinancePage() {
             {canManageExpenses && (
               <>
                 <KpiCard
+                  label="Receitas Avulsas"
+                  value={formatBRLFromCents(data.kpis.incomesTotalCents ?? 0)}
+                  sub={`${data.kpis.incomesCount ?? 0} entradas`}
+                  color="bg-teal-100 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300"
+                />
+                <KpiCard
                   label="Despesas"
                   value={formatBRLFromCents(data.kpis.expensesTotalCents ?? 0)}
                   sub={`${data.kpis.expensesCount ?? 0} despesas`}
                   color="bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300"
                 />
                 <KpiCard
-                  label="Resultado"
-                  value={formatBRLFromCents(data.kpis.profitCents ?? 0)}
-                  sub="Recebido − Despesas"
+                  label="Resultado Líquido"
+                  value={formatBRLFromCents(data.kpis.netResultCents ?? 0)}
+                  sub="Recebido + Avulsas − Despesas"
                   color={
-                    (data.kpis.profitCents ?? 0) >= 0
+                    (data.kpis.netResultCents ?? 0) >= 0
                       ? 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300'
                       : 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300'
                   }
@@ -510,6 +678,156 @@ export default function FinancePage() {
                   </div>
                 )}
               </div>
+
+              {/* Receitas avulsas section */}
+              {canManageExpenses && (
+                <div className="space-y-4">
+                  {(data.breakdowns.byIncomeCategory ?? []).length > 0 && (
+                    <div className="p-4 border rounded-lg bg-card shadow-sm">
+                      <h3 className="font-semibold mb-3">Receitas Avulsas por Categoria</h3>
+                      <div className="space-y-2">
+                        {(data.breakdowns.byIncomeCategory ?? []).map((item) => {
+                          const width = maxIncomeCategoryValue > 0
+                            ? Math.max(2, (item.totalCents / maxIncomeCategoryValue) * 100)
+                            : 0;
+                          return (
+                            <div key={item.categoryId} className="grid grid-cols-[160px_1fr_110px_60px] gap-2 items-center">
+                              <span className="text-sm">{item.category}</span>
+                              <div className="h-2 bg-muted rounded">
+                                <div className="h-2 bg-teal-500 rounded" style={{ width: `${width}%` }} />
+                              </div>
+                              <span className="text-xs text-right">{formatBRLFromCents(item.totalCents)}</span>
+                              <span className="text-xs text-muted-foreground text-right">{item.count}x</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {isAdmin && (
+                    <div className="flex justify-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowIncomeCategoryManager(true)}
+                      >
+                        <Settings className="h-4 w-4 mr-1" />
+                        Gerenciar Categorias
+                      </Button>
+                    </div>
+                  )}
+
+                  <div className="p-4 border rounded-lg bg-card shadow-sm">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-semibold">Receitas Avulsas</h3>
+                      <Button size="sm" onClick={handleOpenNewIncomeForm}>
+                        <Plus className="h-4 w-4 mr-1" />
+                        Nova Receita
+                      </Button>
+                    </div>
+
+                    {incomesLoading ? (
+                      <div className="space-y-2">
+                        <Skeleton className="h-8 w-full" />
+                        <Skeleton className="h-8 w-full" />
+                        <Skeleton className="h-8 w-full" />
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b bg-muted/50">
+                              <th className="text-left px-3 py-2">Data</th>
+                              <th className="text-left px-3 py-2">Descrição</th>
+                              <th className="text-left px-3 py-2">Categoria</th>
+                              <th className="text-right px-3 py-2">Valor</th>
+                              <th className="text-center px-3 py-2">Comprovante</th>
+                              <th className="text-right px-3 py-2">Ações</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {incomes.map((income) => (
+                              <tr key={income.id} className="border-b last:border-0">
+                                <td className="px-3 py-2 whitespace-nowrap">{formatDateBR(income.date)}</td>
+                                <td className="px-3 py-2">{income.description}</td>
+                                <td className="px-3 py-2">{income.category?.label ?? income.categoryId}</td>
+                                <td className="px-3 py-2 text-right whitespace-nowrap">{formatBRLFromCents(income.amount)}</td>
+                                <td className="px-3 py-2 text-center">
+                                  {income.receiptPath ? (
+                                    <a
+                                      href={income.receiptPath}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center justify-center text-primary hover:text-primary/80"
+                                      title="Ver comprovante"
+                                    >
+                                      <FileText className="h-4 w-4" />
+                                    </a>
+                                  ) : (
+                                    <span className="text-muted-foreground">—</span>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2 text-right">
+                                  <div className="inline-flex gap-2">
+                                    <button
+                                      onClick={() => handleEditIncome(income)}
+                                      className="text-muted-foreground hover:text-primary"
+                                      title="Editar"
+                                    >
+                                      <Pencil className="h-4 w-4" />
+                                    </button>
+                                    {isAdmin && (
+                                      <button
+                                        onClick={() => handleDeleteIncome(income.id)}
+                                        className="text-muted-foreground hover:text-destructive"
+                                        title="Excluir"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                            {incomes.length === 0 && (
+                              <tr>
+                                <td className="px-3 py-6 text-center text-muted-foreground" colSpan={6}>
+                                  Nenhuma receita avulsa no período.
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                    {totalIncomePages > 1 && (
+                      <div className="flex items-center justify-between mt-3 pt-3 border-t">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIncomePage((p) => Math.max(0, p - 1))}
+                          disabled={incomePage === 0}
+                        >
+                          Anterior
+                        </Button>
+                        <span className="text-sm text-muted-foreground">
+                          Página {incomePage + 1} de {totalIncomePages}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIncomePage((p) => Math.min(totalIncomePages - 1, p + 1))}
+                          disabled={incomePage >= totalIncomePages - 1}
+                        >
+                          Próxima
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="p-4 border rounded-lg bg-card shadow-sm">
                 <h3 className="font-semibold mb-3">Top pendentes</h3>
@@ -872,6 +1190,143 @@ export default function FinancePage() {
           }}
         />
       )}
+
+      {/* Income form dialog */}
+      <Dialog
+        open={showIncomeForm}
+        onClose={() => {
+          setShowIncomeForm(false);
+          setEditingIncome(null);
+          setIncomeFile(null);
+          setIncomeFormError(null);
+          resetIncomeForm();
+        }}
+        title={editingIncome ? 'Editar Receita' : 'Nova Receita Avulsa'}
+      >
+        <div className="space-y-4">
+          {incomeFormError && (
+            <Alert variant="destructive">{incomeFormError}</Alert>
+          )}
+
+          <div>
+            <label className="text-sm font-medium">Descrição *</label>
+            <Input
+              value={incomeForm.description}
+              onChange={(e) => setIncomeForm((prev) => ({ ...prev, description: e.target.value }))}
+              placeholder="Ex: Repasse convênio XYZ"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Valor *</label>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">R$</span>
+              <Input
+                type="text"
+                value={incomeForm.amountBRL}
+                onChange={(e) => setIncomeForm((prev) => ({ ...prev, amountBRL: e.target.value }))}
+                placeholder="0,00"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Categoria *</label>
+            <Select
+              value={incomeForm.categoryId}
+              onChange={(e) => setIncomeForm((prev) => ({ ...prev, categoryId: e.target.value }))}
+            >
+              <option value="">Selecione uma categoria</option>
+              {incomeCategories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Data *</label>
+            <Input
+              type="date"
+              value={incomeForm.date}
+              onChange={(e) => setIncomeForm((prev) => ({ ...prev, date: e.target.value }))}
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Notas</label>
+            <textarea
+              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[80px] resize-none"
+              value={incomeForm.notes}
+              onChange={(e) => setIncomeForm((prev) => ({ ...prev, notes: e.target.value }))}
+              placeholder="Observações opcionais"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">Comprovante</label>
+            <div className="mt-1 space-y-2">
+              <input
+                ref={incomeFileInputRef}
+                type="file"
+                accept="image/*,application/pdf"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) setIncomeFile(file);
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => incomeFileInputRef.current?.click()}
+              >
+                Selecionar comprovante (opcional)
+              </Button>
+              {incomeFile && (
+                <p className="text-xs text-muted-foreground">{incomeFile.name}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowIncomeForm(false);
+                setEditingIncome(null);
+                setIncomeFile(null);
+                setIncomeFormError(null);
+                resetIncomeForm();
+              }}
+              disabled={savingIncome}
+              className="flex-1"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSaveIncome}
+              disabled={savingIncome || !incomeForm.description || !incomeForm.amountBRL || !incomeForm.date || !incomeForm.categoryId}
+              className="flex-1"
+            >
+              {savingIncome ? 'Salvando...' : 'Salvar'}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+
+      {/* Income category manager dialog (ADMIN only) */}
+      {isAdmin && (
+        <IncomeCategoryManagerDialog
+          open={showIncomeCategoryManager}
+          onClose={() => {
+            setShowIncomeCategoryManager(false);
+            fetchIncomeCategories();
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -1066,6 +1521,219 @@ function CategoryManagerDialog({
                 value={newLabel}
                 onChange={(e) => setNewLabel(e.target.value)}
                 placeholder="Ex: Conta de água"
+                className="h-8 text-sm"
+              />
+            </div>
+            <Button
+              size="sm"
+              onClick={handleCreate}
+              disabled={creating || !newName.trim() || !newLabel.trim()}
+            >
+              {creating ? 'Criando...' : 'Criar Categoria'}
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex justify-end pt-2">
+          <Button variant="outline" onClick={onClose}>
+            Fechar
+          </Button>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
+function IncomeCategoryManagerDialog({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  const [categories, setCategories] = useState<IncomeCategory[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [newName, setNewName] = useState('');
+  const [newLabel, setNewLabel] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editLabel, setEditLabel] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await listIncomeCategories(false);
+      setCategories(data);
+    } catch {
+      // silent
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (open) {
+      load();
+      setNewName('');
+      setNewLabel('');
+      setError(null);
+      setEditingId(null);
+    }
+  }, [open, load]);
+
+  const handleCreate = async () => {
+    if (!newName.trim() || !newLabel.trim()) return;
+    setCreating(true);
+    setError(null);
+    try {
+      await createIncomeCategory({ name: newName.trim().toUpperCase(), label: newLabel.trim() });
+      setNewName('');
+      setNewLabel('');
+      await load();
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === 'object' && 'response' in err
+          ? ((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao criar categoria')
+          : 'Erro ao criar categoria';
+      setError(msg);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleToggleActive = async (cat: IncomeCategory) => {
+    try {
+      await updateIncomeCategory(cat.id, { isActive: !cat.isActive });
+      await load();
+    } catch {
+      // silent
+    }
+  };
+
+  const handleSaveLabel = async (id: string) => {
+    if (!editLabel.trim()) return;
+    try {
+      await updateIncomeCategory(id, { label: editLabel.trim() });
+      setEditingId(null);
+      await load();
+    } catch {
+      // silent
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Remover esta categoria?')) return;
+    setError(null);
+    try {
+      await deleteIncomeCategory(id);
+      await load();
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === 'object' && 'response' in err
+          ? ((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao remover categoria')
+          : 'Erro ao remover categoria';
+      setError(msg);
+    }
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} title="Gerenciar Categorias de Receita">
+      <div className="space-y-4">
+        {error && <Alert variant="destructive">{error}</Alert>}
+
+        {loading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+          </div>
+        ) : (
+          <div className="space-y-2 max-h-64 overflow-auto">
+            {categories.map((cat) => (
+              <div key={cat.id} className="flex items-center gap-2 border rounded p-2">
+                <div className="flex-1 min-w-0">
+                  {editingId === cat.id ? (
+                    <div className="flex gap-2">
+                      <Input
+                        value={editLabel}
+                        onChange={(e) => setEditLabel(e.target.value)}
+                        className="h-7 text-sm"
+                      />
+                      <Button size="sm" onClick={() => handleSaveLabel(cat.id)}>
+                        Salvar
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setEditingId(null)}>
+                        Cancelar
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{cat.label}</span>
+                      <span className="text-xs text-muted-foreground">({cat.name})</span>
+                      {cat.isDefault && (
+                        <span className="text-xs bg-blue-100 text-blue-700 px-1 rounded">padrão</span>
+                      )}
+                      {!cat.isActive && (
+                        <span className="text-xs bg-gray-100 text-gray-500 px-1 rounded">inativa</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {editingId !== cat.id && (
+                  <div className="flex gap-1 shrink-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setEditingId(cat.id);
+                        setEditLabel(cat.label);
+                      }}
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleToggleActive(cat)}
+                      title={cat.isActive ? 'Desativar' : 'Ativar'}
+                    >
+                      {cat.isActive ? 'Desativar' : 'Ativar'}
+                    </Button>
+                    {!cat.isDefault && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDelete(cat.id)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="border-t pt-4">
+          <p className="text-sm font-medium mb-2">Nova Categoria</p>
+          <div className="space-y-2">
+            <div>
+              <label className="text-xs text-muted-foreground">Nome (slug, ex: HEALTH_INSURANCE)</label>
+              <Input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value.toUpperCase())}
+                placeholder="EX: HEALTH_INSURANCE"
+                className="h-8 text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Rótulo (exibição)</label>
+              <Input
+                value={newLabel}
+                onChange={(e) => setNewLabel(e.target.value)}
+                placeholder="Ex: Convênio XYZ"
                 className="h-8 text-sm"
               />
             </div>

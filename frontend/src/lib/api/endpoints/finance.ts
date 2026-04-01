@@ -81,6 +81,9 @@ export interface FinanceSummary {
     expensesTotalCents: number;
     expensesCount: number;
     profitCents: number;
+    incomesTotalCents: number;
+    incomesCount: number;
+    netResultCents: number;
   };
   series: {
     dailyReceived: Array<{ date: string; cents: number; count: number }>;
@@ -103,6 +106,7 @@ export interface FinanceSummary {
       countPending: number;
     }>;
     byExpenseCategory: Array<{ categoryId: string; category: string; totalCents: number; count: number }>;
+    byIncomeCategory: Array<{ categoryId: string; category: string; totalCents: number; count: number }>;
   };
   topPending: Array<{
     appointmentId: string;

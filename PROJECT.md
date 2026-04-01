@@ -32,6 +32,8 @@
 | `payments` | Pagamentos vinculados a consultas; métodos PIX/Dinheiro/Cartão etc. |
 | `finance` | Relatórios financeiros com filtros de período |
 | `expenses` | CRUD de despesas operacionais com categorias; extração de dados de PDF via pdf-parse |
+| `incomes` | CRUD de receitas avulsas (convênio, produto, procedimento extra, etc.) com categorias e comprovante |
+| `income-categories` | Categorias de receita avulsa gerenciáveis por ADMIN |
 | `audit` | Módulo global — loga todas as mutações com ator, IP, entidade e metadados |
 | `notifications` | Serviço de lembretes via WhatsApp (opcional, via webhook externo) |
 | `prisma` | Módulo global — instância compartilhada do PrismaService |
@@ -69,6 +71,7 @@
 - **2025-03-23:** FullCalendar integrado no frontend com suporte a drag-to-reschedule (muda a data/hora do agendamento via PATCH).
 - **2025-03-23:** Lembretes de consulta implementados no serviço `reminders.service.ts` via `@nestjs/schedule`. WhatsApp é opcional (webhook configurável por env).
 - **2025-03-23:** Prontuário médico em formato SOAP. Status: `DRAFT` (editável) ou `FINAL` (imutável, requer médico logado para finalizar).
+- **2026-04-01:** Módulo de receitas avulsas implementado. Modelos `Income` e `IncomeCategory` adicionados. KPI "Resultado Líquido" = Recebido (consultas) + Receitas Avulsas − Despesas. Aba "Receitas" exibe seção de receitas avulsas com gráfico por categoria, tabela paginada, formulário e gerenciador de categorias (ADMIN).
 - **2026-03-25:** Módulo de despesas implementado. Despesas são sempre registradas após o pagamento (sem status pendente/pago). Categorias gerenciáveis por admin/recepcionista. Extração de dados de PDF via `pdf-parse` (sem LLM). Comprovante opcional.
 - **2026-03-25:** Dark mode implementado com `next-themes`. Toggle no header. Nova paleta de marca: terracota (`hsl(14 47% 52%)`) + verde sage. CSS variables em `globals.css`. FullCalendar requer overrides CSS específicos (`.dark .fc-*`) pois injeta seu próprio CSS.
 - **2026-03-25:** Cores dos status de agendamento no calendário ajustadas para nova paleta terracota/sage.
@@ -108,6 +111,8 @@
 - **Payment** — pagamento vinculado 1:1 a `Appointment`; valor em centavos
 - **Expense** — despesa operacional com categoria, valor, data, descrição, notas e comprovante (PDF opcional)
 - **ExpenseCategory** — categorias de despesa (nome, descrição); gerenciáveis por admin/recepcionista
+- **Income** — receita avulsa com categoria, valor, data, descrição, notas e comprovante (opcional)
+- **IncomeCategory** — categorias de receita avulsa; gerenciáveis por ADMIN
 - **AuditLog** — log de auditoria com ator, role, ação, entidade, IP, user agent
 
 ---

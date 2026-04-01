@@ -154,6 +154,32 @@ export enum PaymentMethod {
   BANK_TRANSFER = 'BANK_TRANSFER',
 }
 
+// Income
+export interface IncomeCategory {
+  id: string;
+  name: string;
+  label: string;
+  isDefault: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Income {
+  id: string;
+  description: string;
+  amount: number;
+  categoryId: string;
+  category?: IncomeCategory;
+  date: string;
+  notes?: string;
+  receiptPath?: string | null;
+  createdById: string;
+  createdBy?: { id: string; name: string; role: string };
+  createdAt: string;
+  updatedAt: string;
+}
+
 export enum PaymentStatus {
   PENDING = 'PENDING',
   PAID = 'PAID',

@@ -2,6 +2,34 @@
 
 ---
 
+## [2026-04-01] — Feature de receitas avulsas
+
+### Feito
+
+#### Backend
+- **Modelos Prisma** — `IncomeCategory` e `Income` adicionados ao schema. Relação `createdIncomes` no `User`. Migration `20260401000000_add_income_and_income_categories` com 5 categorias padrão: Convênio, Particular Extra, Venda de Produto, Procedimento, Outros.
+- **Módulo `income-categories`** — CRUD completo espelhando `expense-categories`. Leitura: todos os roles. Escrita/delete: ADMIN only.
+- **Módulo `incomes`** — CRUD completo com upload/delete de comprovante. Leitura: todos os roles. Escrita: ADMIN + RECEPTIONIST. Delete: ADMIN only. Audit log em todas as mutações.
+- **`finance.service.ts`** — `getSummary` agora busca `incomes` no mesmo `Promise.all`. Novos campos nos KPIs: `incomesTotalCents`, `incomesCount`, `netResultCents`. Novo breakdown: `byIncomeCategory`.
+
+#### Frontend
+- **Tipos** — `IncomeCategory` e `Income` adicionados em `frontend/src/types/index.ts`.
+- **Endpoints** — `incomes.ts` e `income-categories.ts` criados em `frontend/src/lib/api/endpoints/`.
+- **`FinanceSummary`** — interface atualizada com novos campos de KPI e breakdown.
+- **`finance/page.tsx`** — KPI "Resultado" substituído por três cards: "Receitas Avulsas" (teal), "Despesas" (orange), "Resultado Líquido" (green/red). Grid KPI ajustado para `lg:grid-cols-7`. Aba "Receitas" ganha seção de receitas avulsas com breakdown por categoria, tabela paginada, formulário de criação/edição e `IncomeCategoryManagerDialog` (ADMIN).
+
+### Decisões tomadas
+- `AuditModule` é `@Global()` — `IncomesModule` não precisa importá-lo (mesmo padrão do `ExpensesModule`).
+- Migration criada manualmente (Docker não disponível no ambiente de desenvolvimento local). Será aplicada em produção via `prisma migrate deploy` no próximo deploy.
+- KPI "profitCents" (Recebido − Despesas) mantido na API para retrocompatibilidade; frontend agora usa `netResultCents`.
+
+### Próximos passos
+1. Fazer deploy e confirmar que a migration é aplicada (`prisma migrate deploy`)
+2. Criar pasta `uploads/income-receipts/` no servidor (ou garantir que o backend a cria automaticamente)
+3. Testar upload de comprovante na receita
+
+---
+
 ## [2026-03-27] — Cache, testes, consolidação de stores e monitoramento (Fase 3)
 
 ### Feito
