@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { X } from 'lucide-react';
+import { X, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
 import { AppointmentStatusBadge } from '@/components/appointments/appointment-status-badge';
@@ -165,7 +165,24 @@ export function AppointmentDetailPanel({
             </div>
           )}
 
-          {actions.length > 0 && (
+          {appointment.status === 'IN_PROGRESS' && (
+            <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2">
+              <p className="text-sm font-medium text-primary">Consulta em andamento</p>
+              <p className="text-xs text-muted-foreground">
+                Acesse a página completa para preencher o prontuário SOAP e concluir o atendimento.
+              </p>
+              <Button
+                size="sm"
+                className="w-full"
+                onClick={() => router.push(`/dashboard/appointments/${appointment.id}`)}
+              >
+                <ExternalLink className="mr-2 h-3.5 w-3.5" />
+                Abrir prontuário
+              </Button>
+            </div>
+          )}
+
+          {actions.length > 0 && appointment.status !== 'IN_PROGRESS' && (
             <div className="space-y-2 pt-2">
               <p className="text-xs text-muted-foreground">Ações</p>
               <div className="flex flex-wrap gap-2">
@@ -184,8 +201,16 @@ export function AppointmentDetailPanel({
             </div>
           )}
 
-          <div className="pt-2 text-xs text-muted-foreground">
-            Status atual: {statusLabel(appointment.status)}
+          <div className="pt-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full text-muted-foreground"
+              onClick={() => router.push(`/dashboard/appointments/${appointment.id}`)}
+            >
+              <ExternalLink className="mr-2 h-3.5 w-3.5" />
+              Ver detalhes completos
+            </Button>
           </div>
         </div>
       </aside>

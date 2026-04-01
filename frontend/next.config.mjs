@@ -14,11 +14,6 @@ const nextConfig = {
         source: '/api/:path*',
         destination: `${internalApiOrigin}/api/:path*`,
       },
-      {
-        // Proxy para arquivos de upload (comprovantes de pagamento, etc.)
-        source: '/uploads/:path*',
-        destination: `${internalApiOrigin}/uploads/:path*`,
-      },
     ];
   },
 };

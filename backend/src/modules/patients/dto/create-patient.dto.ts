@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsEmail, IsOptional, IsDateString } from 'class-validator';
+import { IsString, IsNotEmpty, IsEmail, IsOptional, IsDateString, IsBoolean, Equals } from 'class-validator';
 
 export class CreatePatientDto {
   @ApiProperty({ example: 'Maria Silva' })
@@ -81,4 +81,9 @@ export class CreatePatientDto {
   @IsString()
   @IsOptional()
   emergencyContactPhone?: string;
+
+  @ApiProperty({ example: true, description: 'Consentimento LGPD obrigatório' })
+  @IsBoolean()
+  @Equals(true, { message: 'O consentimento LGPD é obrigatório para cadastrar o paciente' })
+  lgpdConsentGiven: boolean;
 }

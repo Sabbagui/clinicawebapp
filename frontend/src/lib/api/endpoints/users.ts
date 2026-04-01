@@ -29,7 +29,29 @@ export interface UpdateStaffData {
   email?: string;
   role?: string;
   isActive?: boolean;
+  crm?: string;
+  crmUf?: string;
+  clinicName?: string;
+  clinicAddress?: string;
+  clinicPhone?: string;
 }
+
+export interface DoctorProfile {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  crm: string | null;
+  crmUf: string | null;
+  clinicName: string | null;
+  clinicAddress: string | null;
+  clinicPhone: string | null;
+}
+
+export const getUserById = async (id: string): Promise<DoctorProfile> => {
+  const response = await apiClient.get<DoctorProfile>(`/api/users/${id}`);
+  return response.data;
+};
 
 export const getDoctors = async (): Promise<Doctor[]> => {
   const response = await apiClient.get<Doctor[]>('/api/users?role=DOCTOR');

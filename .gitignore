@@ -52,8 +52,16 @@ prisma/.env
 .cache/
 .temp/
 
+# Cowork — arquivos de análise e prompts gerados pelo Claude
+PROMPTS-*.md
+analise-*.docx
+
 # Claude Code
 .claude/
+
+# TypeScript build cache
+tsconfig.tsbuildinfo
+**/tsconfig.tsbuildinfo
 
 # Windows artifacts
 nul

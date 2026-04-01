@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Alert } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAppointmentStore } from '@/lib/stores/appointment-store';
+import { useAppointmentsStore } from '@/lib/stores/appointments-store';
 import { getApiErrorMessage, isForbiddenError } from '@/lib/api/error-utils';
 import {
   startEncounter,
@@ -16,9 +16,11 @@ import {
   finalizeMedicalRecord,
 } from '@/lib/api/endpoints/medical-records';
 import type { MedicalRecord, Prescription } from '@/types';
+import { PrescriptionType } from '@/types';
 import type { Appointment } from '@/lib/api/endpoints/appointments';
 import { Cid10Combobox } from './Cid10Combobox';
 import { MedicalRecordPDF } from './MedicalRecordPDF';
+import { PrescriptionModal } from './PrescriptionModal';
 import {
   Play,
   Save,
@@ -28,6 +30,7 @@ import {
   Loader2,
   Plus,
   Trash2,
+  ClipboardList,
 } from 'lucide-react';
 
 interface EncounterSectionProps {
@@ -47,7 +50,7 @@ const EMPTY_PRESCRIPTION: Prescription = { drug: '', dosage: '', frequency: '', 
 
 export function EncounterSection({ appointment }: EncounterSectionProps) {
   const router = useRouter();
-  const { fetchAppointment } = useAppointmentStore();
+  const { fetchAppointment } = useAppointmentsStore();
 
   const [record, setRecord] = useState<MedicalRecord | null>(null);
   const [recordLoading, setRecordLoading] = useState(false);
@@ -66,6 +69,8 @@ export function EncounterSection({ appointment }: EncounterSectionProps) {
   const [saveState, setSaveState] = useState<ActionState>('idle');
   const [finalizeState, setFinalizeState] = useState<ActionState>('idle');
   const [completeState, setCompleteState] = useState<ActionState>('idle');
+
+  const [prescriptionModalType, setPrescriptionModalType] = useState<PrescriptionType | null>(null);
 
   const isAnyActionLoading =
     startState === 'loading' || saveState === 'loading' || finalizeState === 'loading' || completeState === 'loading';
@@ -144,7 +149,7 @@ export function EncounterSection({ appointment }: EncounterSectionProps) {
 
   const isReadOnly = record?.status === 'FINAL' || appointment.status === 'COMPLETED';
 
-  if (appointment.status === 'SCHEDULED' || appointment.status === 'CONFIRMED') {
+  if (appointment.status === 'SCHEDULED' || appointment.status === 'CONFIRMED' || appointment.status === 'CHECKED_IN') {
     return (
       <div className="p-6 border rounded-lg bg-card shadow-sm">
         <h3 className="font-semibold text-lg mb-4 pb-2 border-b flex items-center gap-2">
@@ -331,7 +336,36 @@ export function EncounterSection({ appointment }: EncounterSectionProps) {
         {record?.status === 'FINAL' && (
           <MedicalRecordPDF record={record} appointment={appointment} />
         )}
+        {record?.status === 'FINAL' && record.prescriptions && record.prescriptions.length > 0 && (
+          <>
+            <Button
+              variant="outline"
+              onClick={() => setPrescriptionModalType(PrescriptionType.SIMPLES)}
+            >
+              <ClipboardList className="mr-2 h-4 w-4" />
+              Receita Simples
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setPrescriptionModalType(PrescriptionType.CONTROLE_ESPECIAL_C1)}
+            >
+              <ClipboardList className="mr-2 h-4 w-4" />
+              Receita C1
+            </Button>
+          </>
+        )}
       </div>
+
+      {record && prescriptionModalType && (
+        <PrescriptionModal
+          open={prescriptionModalType !== null}
+          onClose={() => setPrescriptionModalType(null)}
+          medicalRecordId={record.id}
+          prescriptions={record.prescriptions as Prescription[]}
+          cid10={record.cid10}
+          type={prescriptionModalType}
+        />
+      )}
     </div>
   );
 }

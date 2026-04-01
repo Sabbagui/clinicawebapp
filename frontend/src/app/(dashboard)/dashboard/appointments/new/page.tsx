@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useAppointmentStore } from '@/lib/stores/appointment-store';
+import { useAppointmentsStore } from '@/lib/stores/appointments-store';
 import { AppointmentForm } from '@/components/appointments/appointment-form';
 import { AppointmentFormData } from '@/lib/validation/appointment-schema';
 import { Alert } from '@/components/ui/alert';
@@ -11,13 +11,14 @@ import { useState } from 'react';
 
 export default function NewAppointmentPage() {
   const router = useRouter();
-  const { addAppointment } = useAppointmentStore();
+  const { addAppointment, setSelectedDate } = useAppointmentsStore();
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (data: AppointmentFormData) => {
     try {
       setError(null);
       await addAppointment(data);
+      setSelectedDate(data.date);
       router.push('/dashboard/appointments');
     } catch (err: any) {
       if (err.response?.status === 409) {

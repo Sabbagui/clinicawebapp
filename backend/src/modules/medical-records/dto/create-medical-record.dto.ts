@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsArray } from 'class-validator';
 
 export class CreateMedicalRecordDto {
   @ApiProperty()
@@ -36,4 +36,14 @@ export class CreateMedicalRecordDto {
   @IsString()
   @IsOptional()
   plan?: string;
+
+  @ApiProperty({ required: false, description: 'Código CID-10 (ex: N92.0)' })
+  @IsString()
+  @IsOptional()
+  cid10?: string;
+
+  @ApiProperty({ required: false, description: 'Lista de prescrições estruturadas' })
+  @IsArray()
+  @IsOptional()
+  prescriptions?: object[];
 }

@@ -27,8 +27,16 @@ export class PatientsService {
   constructor(private prisma: PrismaService) {}
 
   create(createPatientDto: CreatePatientDto) {
+    const { lgpdConsentGiven, ...rest } = createPatientDto;
     return this.prisma.patient.create({
-      data: createPatientDto,
+      data: {
+        ...rest,
+        lgpdConsentGiven,
+        lgpdConsentDate: lgpdConsentGiven ? new Date() : null,
+        lgpdConsentText: lgpdConsentGiven
+          ? 'Autorizo o armazenamento e uso dos meus dados de saúde conforme a LGPD (Lei 13.709/2018). Os dados serão usados exclusivamente para fins de atendimento médico.'
+          : null,
+      },
     });
   }
 
@@ -133,6 +141,38 @@ export class PatientsService {
     return this.prisma.patient.update({
       where: { id },
       data: { isActive: false, deletedAt: new Date() },
+    });
+  }
+
+  async anonymize(id: string) {
+    const patient = await this.prisma.patient.findUnique({ where: { id } });
+    if (!patient) throw new NotFoundException('Paciente não encontrado');
+
+    const birthYear = patient.birthDate.getFullYear();
+
+    return this.prisma.patient.update({
+      where: { id },
+      data: {
+        name: 'Paciente Anonimizado',
+        cpf: '00000000' + id.slice(-3),
+        phone: 'Anonimizado',
+        whatsapp: null,
+        email: null,
+        emergencyContactName: null,
+        emergencyContactRelationship: null,
+        emergencyContactPhone: null,
+        street: 'Anonimizado',
+        number: 'Anonimizado',
+        complement: null,
+        neighborhood: 'Anonimizado',
+        city: 'Anonimizado',
+        state: 'XX',
+        zipCode: '00000000',
+        birthDate: new Date(birthYear, 0, 1),
+        lgpdConsentGiven: false,
+        lgpdConsentDate: null,
+        lgpdConsentText: null,
+      },
     });
   }
 
